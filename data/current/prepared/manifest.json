@@ -1,0 +1,11 @@
+{
+  "dataset": "MultiDoc2Dial",
+  "domain": "dmv",
+  "documents": 149,
+  "questions": {
+    "train": 6525,
+    "validation": 1132,
+    "test": 1094
+  },
+  "source_archive": "C:\\Users\\Sergey\\Desktop\\government_vehicle_services_rag\\RAG\\data\\current\\downloads\\multidoc2dial.zip"
+}

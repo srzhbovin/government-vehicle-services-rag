@@ -1,0 +1,11 @@
+{
+  "dataset": "MultiDoc2Dial",
+  "domain": "dmv",
+  "documents": 149,
+  "questions": {
+    "train": 6525,
+    "validation": 1132,
+    "test": 1094
+  },
+  "source_archive": "data/current/downloads/multidoc2dial.zip"
+}
