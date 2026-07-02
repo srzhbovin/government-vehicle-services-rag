@@ -2,3 +2,9 @@ __pycache__/
 *.py[cod]
 .DS_Store
 .venv/
+.env
+.env.*
+!.env.example
+
+# Локальные кэши моделей и временные результаты Python.
+.cache/

@@ -22,9 +22,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-from compress_documents_bm25 import split_segments, tokenize
-from evaluate_bm25_retrieval import evaluate, read_jsonl
-from recursive_chunk_documents import chunk_document as recursive_chunk_document
+from RAG._archive_nested_pipeline.scripts.compress_documents_bm25 import split_segments, tokenize
+from RAG._archive_nested_pipeline.scripts.evaluate_bm25_retrieval import evaluate, read_jsonl
+from RAG._archive_nested_pipeline.scripts.recursive_chunk_documents import chunk_document as recursive_chunk_document
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -485,11 +485,11 @@ def build_report(records: list[dict[str, Any]], documents_path: Path, questions_
     ]
     company = company_matches[0] if company_matches else None
     company_line = (
-        f"- Компания-style baseline `recursive 500/200`: "
+        f"- Baseline `recursive 500/200`: "
         f"Recall@10={company['recall@10']:.4f}, "
         f"Recall@5={company['recall@5']:.4f}, чанков={company['chunks']}."
         if company
-        else "- Компания-style baseline `recursive 500/200` не попал в этот укороченный прогон."
+        else "- Baseline `recursive 500/200` не попал в этот укороченный прогон."
     )
 
     return f"""# Chunking comparison

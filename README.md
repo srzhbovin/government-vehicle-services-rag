@@ -1,299 +1,170 @@
-# RAG: 
+# Исследование компонентов RAG на документах DMV
 
-Актуальная версия проекта теперь лежит в папке src`.
+Проект поэтапно исследует подготовку документов, chunking, векторные индексы и retrieval для
+Retrieval-Augmented Generation. Корпус — англоязычная часть DMV из MultiDoc2Dial: 149 документов
+и 8751 диалоговый вопрос в трёх выборках.
 
-Проект закрывает несколько этапов RAG-пайплайна:
+На текущем этапе реализовано сравнение четырёх обязательных способов поиска:
+ 
+- полный перебор по косинусному сходству;
+- BM25;
+- точный поиск через `FAISS IndexFlatIP`;
+- гибрид BM25 + FAISS через Reciprocal Rank Fusion (RRF).
 
-- recursive chunking;
-- `CHUNK_SIZE = 500`;
-- `CHUNK_OVERLAP = 200`;
-- экспериментальное уменьшение исходного текста через BM25-подобный выбор важных
-  предложений;
-- сравнение разных стратегий chunking по retrieval-метрикам;
-- сравнение FAISS-индексов Flat / IVF / HNSW.
+Дополнительно реализован опциональный cross-encoder reranker. Он запускается отдельным флагом,
+потому что на CPU заметно медленнее основного поиска.
 
-## Что добавлено
+## Текущий результат
+
+Для эксперимента используются token-чанки `120/0` и эмбеддинги
+`sentence-transformers/all-MiniLM-L6-v2`. Метод выбирается по validation-набору; test используется
+только для независимой проверки после выбора.
+
+| Метод | Validation Recall@5 | Validation Recall@10 | Test Recall@5 | Test Recall@10 |
+|---|---:|---:|---:|---:|
+| Cosine | 0.5230 | 0.6131 | 0.5411 | 0.6243 |
+| BM25 | 0.5769 | 0.6528 | 0.5759 | 0.6664 |
+| FAISS Flat | 0.5230 | 0.6131 | 0.5411 | 0.6252 |
+| Hybrid RRF | 0.6104 | **0.6935** | 0.5795 | **0.6590** |
+| Hybrid RRF + reranker | **0.6237** | **0.6935** | **0.6106** | **0.6590** |
+
+Для итогового RAG выбран `hybrid_reranked`: сначала BM25 и FAISS объединяются через RRF, затем
+первые 10 кандидатов переставляет `cross-encoder/ms-marco-MiniLM-L2-v2`. Это лучший вариант по
+основной метрике validation Recall@5, и преимущество подтверждается на test. Reranker не изменил
+Recall@10, но чаще поднял уже найденный правильный документ в первую пятёрку.
+
+Цена дополнительного качества заметна: гибрид без reranker обрабатывал запрос примерно за
+6–7 мс, а вариант с reranker — за 117–403 мс в пакетном CPU-прогоне. Поэтому в будущем RAG
+разумно оставить два профиля: `hybrid_reranked` для максимального качества и `hybrid_rrf` для
+минимальной задержки. BM25 остаётся быстрым baseline.
+
+Подробный отчёт находится в [reports/retrieval_comparison.md](reports/retrieval_comparison.md).
+Проверка шагов 1–5 — в [reports/audit_steps_1_5.md](reports/audit_steps_1_5.md).
+
+## Быстрый запуск на Windows
+
+Рекомендуется Python 3.13. Текущие версии PyTorch и SentenceTransformers устанавливаются на нём
+без дополнительных действий.
+
+Из корня `RAG` выполните:
+
+```powershell
+py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+Полный эксперимент с нейросетевыми эмбеддингами:
+
+```powershell
+.\.venv\Scripts\python.exe src\rag_pipeline\compare_retrieval_methods.py --device cpu
+```
+
+При первом запуске SentenceTransformers скачает модель с Hugging Face. Последующие запуски
+используют локальный кэш.
+
+Эксперимент с reranker:
+
+```powershell
+.\.venv\Scripts\python.exe src\rag_pipeline\compare_retrieval_methods.py `
+  --device cpu `
+  --use-reranker `
+  --reranker-candidate-k 10 `
+  --reranker-batch-size 128
+```
+
+Быстрая локальная проверка без PyTorch и скачивания моделей:
+
+```powershell
+.\.venv\Scripts\python.exe src\rag_pipeline\compare_retrieval_methods.py `
+  --embedding-backend tfidf
+```
+
+TF-IDF режим нужен для smoke-теста и отладки. Итоговые выводы выше получены на
+`all-MiniLM-L6-v2`, а не на TF-IDF.
+
+
+## Как устроено сравнение
+
+Всем методам передаются одинаковые 1152 чанка и одинаковые вопросы. Для cosine и FAISS
+используются одни и те же L2-нормализованные эмбеддинги. Поэтому точный `IndexFlatIP` должен
+давать то же качество, что и прямое косинусное сходство; небольшое отличие возможно только на
+равных score.
+
+Гибрид получает первые 60 результатов BM25 и FAISS и объединяет их с помощью weighted RRF:
 
 ```text
-.
-├── scripts/
-│   └── ...                         # legacy/protected старые файлы
-├── src/
-│   └── rag_pipeline/
-│       ├── import_multidoc2dial_dmv.py
-│       ├── build_token_chunks.py
-│       ├── recursive_chunk_documents.py
-│       ├── compress_documents_bm25.py
-│       ├── evaluate_bm25_retrieval.py
-│       ├── compare_chunking_strategies.py
-│       └── benchmark_faiss_indexes.py
-├── tests_current/
-│   ├── test_recursive_chunk_documents.py
-│   ├── test_compress_documents_bm25.py
-│   ├── test_evaluate_bm25_retrieval.py
-│   └── test_compare_chunking_strategies.py
-├── tests/                          # legacy/protected старые файлы
-├── data/
-│   ├── current/
-│   │   ├── downloads/
-│   │   │   └── multidoc2dial.zip
-│   │   ├── indexes/
-│   │   │   └── faiss/
-│   │   └── prepared/
-│   │       ├── dmv_documents.jsonl
-│   │       ├── dmv_questions_train.jsonl
-│   │       ├── dmv_questions_validation.jsonl
-│   │       ├── dmv_questions_test.jsonl
-│   │       ├── dmv_chunks_token_120_0.jsonl
-│   │       ├── dmv_chunks_recursive.jsonl
-│   │       ├── dmv_documents_compact_bm25.jsonl
-│   │       ├── dmv_chunks_recursive_compact_bm25.jsonl
-│   │       ├── dmv_documents_compact_bm25_safe.jsonl
-│   │       └── dmv_chunks_recursive_compact_bm25_safe.jsonl
-│   ├── experiments/
-│   │   ├── chunking/
-│   │   │   ├── chunking_comparison_results.csv
-│   │   │   └── chunking_comparison_results.jsonl
-│   │   └── faiss/
-│   │       ├── faiss_index_results.csv
-│   │       └── faiss_index_results.jsonl
-│   └── prepared/                  # legacy/protected старые файлы
-├── reports/
-│   ├── chunking_comparison.md
-│   └── faiss_comparison.md
-└── README_CURRENT.md
+score(document) = 0.5 / (60 + rank_bm25) + 0.5 / (60 + rank_faiss)
 ```
 
-## 1. Импорт DMV-датасета
+Основная метрика выбора — Recall@5: доля вопросов, для которых в первой пятёрке чанков найден
+хотя бы один чанк правильного документа. Дополнительно считаются Recall@1/3/10 и MRR@10.
 
-```bash
-python3 src/rag_pipeline/import_multidoc2dial_dmv.py
-```
-
-Результат:
-
-- 149 DMV-документов;
-- 128 953 слова;
-- 6525 train QA-пар;
-- 1132 validation QA-пары;
-- 1094 test QA-пары.
-
-## 2. Recursive chunking
-
-```bash
-python3 src/rag_pipeline/recursive_chunk_documents.py
-```
-
-Параметры по умолчанию:
-
-```python
-CHUNK_SIZE = 500
-CHUNK_OVERLAP = 200
-```
-
-Это character-based recursive chunking: текст сначала пытается резаться по более
-крупным естественным границам, потом по более мелким:
-
-```text
-\n\n → \n → . → ? → ! → ; → : → , → пробел → fallback по символам
-```
-
-Результат на полном DMV-корпусе:
-
-- 2435 чанков;
-- все 149 документов покрыты;
-- средний размер чанка: 414.3 символа;
-- максимум: 499 символов;
-- пустых чанков: 0;
-- чанков без source spans: 0.
-
-## 3. BM25-подобное сжатие документов
-
-Идея эксперимента:
-
-1. документ режется на предложения/небольшие смысловые сегменты;
-2. из документа достаются важные термы через `tf * idf`;
-3. эти термы используются как запрос;
-4. предложения скорятся BM25-подобной формулой;
-5. самые сильные предложения собираются обратно в compact-документ;
-6. затем compact-документы снова режутся recursive chunking.
-
-Агрессивный режим:
-
-```bash
-python3 src/rag_pipeline/compress_documents_bm25.py
-python3 src/rag_pipeline/recursive_chunk_documents.py \
-  data/current/prepared/dmv_documents_compact_bm25.jsonl \
-  --output data/current/prepared/dmv_chunks_recursive_compact_bm25.jsonl
-```
-
-Результат:
-
-- документы ужались до 42.9% по символам;
-- слова ужались до 42.7%;
-- чанки: 1060 вместо 2435;
-- файл чанков: 1.9 MB вместо 4.9 MB.
-
-Safe-режим:
-
-```bash
-python3 src/rag_pipeline/compress_documents_bm25.py \
-  --target-ratio 0.75 \
-  --max-segments 60 \
-  --output data/current/prepared/dmv_documents_compact_bm25_safe.jsonl
-
-python3 src/rag_pipeline/recursive_chunk_documents.py \
-  data/current/prepared/dmv_documents_compact_bm25_safe.jsonl \
-  --output data/current/prepared/dmv_chunks_recursive_compact_bm25_safe.jsonl
-```
-
-Результат:
-
-- документы ужались до 70.8% по символам;
-- слова ужались до 70.8%;
-- чанки: 1771 вместо 2435;
-- файл чанков: 3.3 MB вместо 4.9 MB.
-
-## 4. Проверка качества BM25 retrieval
-
-Для честной проверки добавлен простой retrieval baseline:
-
-```bash
-python3 src/rag_pipeline/evaluate_bm25_retrieval.py \
-  --chunks data/current/prepared/dmv_chunks_recursive.jsonl \
-  --questions data/current/prepared/dmv_questions_validation.jsonl
-```
-
-Метрика считается document-level: вопрос считается найденным, если среди top-k
-чанков есть хотя бы один чанк из правильного `gold_document_ids`.
-
-| Корпус | Чанков | Размер chunk-файла | Recall@1 | Recall@5 | Recall@10 | MRR@10 |
-|---|---:|---:|---:|---:|---:|---:|
-| Full recursive | 2435 | 4.9 MB | 0.3569 | 0.5636 | 0.6290 | 0.4389 |
-| Compact BM25 aggressive | 1060 | 1.9 MB | 0.2641 | 0.4293 | 0.5009 | 0.3345 |
-| Compact BM25 safe | 1771 | 3.3 MB | 0.2951 | 0.4938 | 0.5742 | 0.3790 |
-
-## 5. Исследование способов chunking
-
-Добавлен отдельный эксперимент для сравнения разных способов разбиения:
-
-```bash
-python3 src/rag_pipeline/compare_chunking_strategies.py
-```
-
-Проверяются:
-
-- `CharacterTextSplitter`-style: фиксированные окна по символам;
-- `RecursiveCharacterTextSplitter`-style: recursive splitting по естественным
-  разделителям;
-- `TokenTextSplitter`-style: фиксированные окна по словам/токенам;
-- `semantic_lite`: sentence grouping через TF-IDF cosine similarity без внешних
-  embedding-моделей.
-
-Всего прогоняется 35 конфигураций с разными `chunk_size` и `chunk_overlap`.
-Результаты сохраняются сюда:
-
-- `data/experiments/chunking/chunking_comparison_results.csv`;
-- `data/experiments/chunking/chunking_comparison_results.jsonl`;
-- `reports/chunking_comparison.md`.
-
-Лучшие результаты по validation-вопросам:
-
-| Rank | Splitter | Size | Overlap | Unit | Chunks | Recall@1 | Recall@5 | Recall@10 | MRR@10 |
-|---:|---|---:|---:|---|---:|---:|---:|---:|---:|
-| 1 | token | 120 | 0 | tokens | 1152 | 0.3595 | 0.5707 | 0.6475 | 0.4501 |
-| 2 | recursive | 500 | 0 | characters | 1823 | 0.3445 | 0.5601 | 0.6431 | 0.4373 |
-| 3 | character | 800 | 0 | characters | 991 | 0.3269 | 0.5627 | 0.6413 | 0.4280 |
-| 11 | recursive | 500 | 200 | characters | 2435 | 0.3569 | 0.5636 | 0.6290 | 0.4389 |
-
-Главный вывод: на текущем BM25 retrieval лучший вариант — token splitting
-`120/0`. Baseline вариант `recursive 500/200` остаётся рабочим baseline,
-но в этой проверке он не лучший. Большой overlap часто не помогал, а иногда
-ухудшал качество из-за роста числа похожих соседних чанков.
-
-## 6. Исследование FAISS
-
-Для FAISS сначала материализован лучший chunking-вариант из предыдущего
-исследования:
-
-```bash
-python3 src/rag_pipeline/build_token_chunks.py
-```
-
-Результат:
-
-- `data/current/prepared/dmv_chunks_token_120_0.jsonl`;
-- 1152 чанка;
-- token splitting `chunk_size=120`, `chunk_overlap=0`.
-
-Затем построены dense TF-IDF-векторы размерности 2048 и поверх них сравнены
-несколько FAISS-индексов:
-
-- `IndexFlatIP`;
-- `IndexIVFFlat`, `nlist=32`, `nprobe=4`;
-- `IndexIVFFlat`, `nlist=32`, `nprobe=16`;
-- `IndexHNSWFlat`, `M=16`, `efSearch=32`;
-- `IndexHNSWFlat`, `M=32`, `efSearch=64`.
-
-Запуск:
-
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements-faiss.txt
-.venv/bin/python src/rag_pipeline/benchmark_faiss_indexes.py
-```
-
-Результаты сохраняются сюда:
-
-- `data/experiments/faiss/faiss_index_results.csv`;
-- `data/experiments/faiss/faiss_index_results.jsonl`;
-- `data/current/indexes/faiss/*.index`;
-- `reports/faiss_comparison.md`.
-
-Итоговая таблица:
-
-| Index | Build ms | Search ms/query | Index size | Recall@1 | Recall@5 | Recall@10 | MRR@10 |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| IVF nprobe=16 | 8.61 | 0.0781 | 9481.4 KB | 0.3136 | 0.5353 | 0.6299 | 0.4095 |
-| HNSW M=32 ef=64 | 162.55 | 0.1155 | 9521.7 KB | 0.3163 | 0.5345 | 0.6281 | 0.4109 |
-| Flat IP | 1.50 | 0.0034 | 9216.0 KB | 0.3163 | 0.5345 | 0.6228 | 0.4101 |
-| IVF nprobe=4 | 7.77 | 0.0213 | 9481.4 KB | 0.3074 | 0.5371 | 0.6228 | 0.4060 |
-| HNSW M=16 ef=32 | 134.90 | 0.0597 | 9378.1 KB | 0.3127 | 0.5274 | 0.6184 | 0.4070 |
-
-Вывод по FAISS:
-
-- на маленьком корпусе из 1152 чанков `Flat IP` оказался самым быстрым и самым
-  простым вариантом;
-- `IVF nprobe=16` дал лучший `Recall@10`, но был медленнее Flat;
-- `HNSW` здесь не даёт выигрыша, потому что данных мало, а построение индекса
-  дороже;
-- для текущего размера корпуса лучше начинать с `IndexFlatIP`;
-- IVF/HNSW имеет смысл включать, когда корпус вырастет хотя бы до десятков или
-  сотен тысяч чанков.
-
-## Вывод
-
-Recursive chunking с `500/200` сделан и остаётся рабочим
-baseline. После отдельного сравнения chunking-стратегий видно, что для текущего
-BM25 retrieval сильнее оказался token splitting `120/0`, поэтому финальный выбор
-чанкинга лучше делать по метрикам, а не только по корпоративному дефолту.
-
-BM25-сжатие тоже реализовано, но текущий эксперимент показал важную вещь:
-место действительно экономится, однако качество retrieval заметно падает.
 
 ## Тесты
 
-```bash
-python3 -m unittest discover -s tests_current -v
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Проверяется:
+Проверяются загрузка и нормализация документов, базовый chunking, BM25, TF-IDF-векторизация,
+совпадение точного cosine и FAISS, RRF и расчёт retrieval-метрик. На текущей версии проходят
+22 теста.
 
-- recursive chunking;
-- overlap;
-- сохранение source spans;
-- BM25 sentence selection;
-- pruning spans после сжатия;
-- document-level Recall@k evaluator;
-- сравнение Character/Recursive/Token/Semantic-lite chunking;
-- FAISS benchmark для Flat / IVF / HNSW.
+## Воспроизведение предыдущих шагов
+
+Рабочие скрипты находятся в `src/rag_pipeline`.
+
+Импорт MultiDoc2Dial DMV:
+
+```powershell
+.\.venv\Scripts\python.exe src\rag_pipeline\import_multidoc2dial_dmv.py
+```
+
+Recursive chunking `500/200`:
+
+```powershell
+.\.venv\Scripts\python.exe src\rag_pipeline\recursive_chunk_documents.py
+```
+
+Сравнение 35 конфигураций chunking:
+
+```powershell
+.\.venv\Scripts\python.exe src\rag_pipeline\compare_chunking_strategies.py
+```
+
+Построение выбранных token-чанков `120/0`:
+
+```powershell
+.\.venv\Scripts\python.exe src\rag_pipeline\build_token_chunks.py
+```
+
+Сравнение FAISS Flat, IVF и HNSW:
+
+```powershell
+.\.venv\Scripts\python.exe src\rag_pipeline\benchmark_faiss_indexes.py
+```
+
+## Состояние шагов 1–5
+
+Загрузка данных, подготовка, chunking и сравнение FAISS-индексов подтверждены кодом, сохранёнными
+результатами и тестами. Полный корпус лучше BM25-сжатых вариантов, token chunking `120/0` лучше
+исходного recursive `500/200`, а для текущего небольшого корпуса разумнее точный Flat-индекс.
+
+Отдельное сравнение двух embedding-моделей из шага 2 полного ТЗ в репозитории отсутствует.
+Использование `all-MiniLM-L6-v2` на этом шаге закрывает потребность retrieval-эксперимента.
+
+## Структура проекта
+
+```text
+RAG/
+├── src/rag_pipeline/             # актуальные скрипты этапов исследования
+├── tests/                        # запускаемые тесты
+├── data/current/                 # рабочие подготовленные данные и индексы
+├── data/experiments/             # численные результаты экспериментов
+├── reports/                      # отчёты и выводы
+├── requirements.txt              # зависимости текущего retrieval-этапа
+├── requirements-faiss.txt        # минимальные зависимости старого FAISS-этапа
+└── .env.example                  # шаблон секретов для будущего шага генерации
+```
+

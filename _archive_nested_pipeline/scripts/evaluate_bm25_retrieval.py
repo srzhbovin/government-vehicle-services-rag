@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from compress_documents_bm25 import tokenize
+from RAG._archive_nested_pipeline.scripts.compress_documents_bm25 import tokenize
 
 
 ROOT = Path(__file__).resolve().parents[1]
