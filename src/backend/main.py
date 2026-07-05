@@ -69,6 +69,7 @@ def create_app(
             embedding_model=application_settings.embedding_model,
             llm_provider=application_settings.llm_provider,
             generation_model=application_settings.generation_model_name,
+            prompt_strategy=application_settings.prompt_strategy,
         )
 
     @app.post(

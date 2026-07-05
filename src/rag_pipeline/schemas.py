@@ -48,7 +48,12 @@ class AskResponse(BaseModel):
     answer: str
     retrieval_method: str
     generation_model: str
+    prompt_strategy: str
     answer_language: str
+    confidence: float | None = None
+    source: str | None = None
+    structured_parse_success: bool | None = None
+    schema_valid: bool | None = None
     sources: list[SourceItem]
     usage: GenerationUsage
     timings: TimingInfo
@@ -62,3 +67,4 @@ class HealthResponse(BaseModel):
     embedding_model: str
     llm_provider: str
     generation_model: str
+    prompt_strategy: str

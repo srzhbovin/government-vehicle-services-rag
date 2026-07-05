@@ -33,6 +33,8 @@ class GeneratorProtocol(Protocol):
         question: str,
         chunks: list[RetrievedChunk],
         language: str = "auto",
+        strategy: str | None = None,
+        temperature: float | None = None,
     ) -> GenerationResult: ...
 
 
@@ -86,7 +88,12 @@ class RAGService:
             answer=generation.answer,
             retrieval_method=retrieval.method,
             generation_model=generation.model,
+            prompt_strategy=generation.prompt_strategy,
             answer_language=language,
+            confidence=generation.confidence,
+            source=generation.source,
+            structured_parse_success=generation.parse_success,
+            schema_valid=generation.schema_valid,
             sources=_source_items(retrieval),
             usage=generation.usage,
             timings=TimingInfo(

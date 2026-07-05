@@ -1,0 +1,15 @@
+{
+  "model": "yandexgpt-5-lite",
+  "retrieval_method": "hybrid_reranked",
+  "questions": 20,
+  "parameter_questions": 10,
+  "default_temperature": 0.1,
+  "strategies": [
+    "plain",
+    "json",
+    "pydantic",
+    "structured_output"
+  ],
+  "semantic_correctness_threshold": 0.6,
+  "generated_at": "2026-07-05T15:38:54.539807+00:00"
+}

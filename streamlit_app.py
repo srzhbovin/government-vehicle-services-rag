@@ -46,6 +46,7 @@ with st.sidebar:
         st.write(f"Retrieval: `{health['retrieval_method']}`")
         st.write(f"Provider: `{health['llm_provider']}`")
         st.write(f"Генерация: `{health['generation_model']}`")
+        st.write(f"Prompt: `{health['prompt_strategy']}`")
         if not health["generator_configured"]:
             st.warning("Не настроены переменные Yandex Cloud в .env")
     st.divider()
@@ -121,6 +122,12 @@ if ask_clicked:
         else:
             st.subheader("Ответ")
             st.markdown(result["answer"])
+            details = [f"Стратегия: `{result['prompt_strategy']}`"]
+            if result.get("confidence") is not None:
+                details.append(f"Confidence: `{result['confidence']:.2f}`")
+            if result.get("source"):
+                details.append(f"Источники модели: `{result['source']}`")
+            st.caption(" · ".join(details))
 
             timings = result["timings"]
             metric_columns = st.columns(4)

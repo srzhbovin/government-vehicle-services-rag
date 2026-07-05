@@ -1,0 +1,5 @@
+﻿strategy,runs,generation_errors,parse_errors,schema_adherence_rate,exact_match,avg_token_f1,avg_semantic_similarity,answer_correct_rate,citation_valid_rate,avg_confidence,confidence_mae,avg_generation_ms,avg_total_tokens,selection_score
+plain,20,0,0,,0.0,0.490949,0.764836,0.8,0.95,,,2520.825,1266.05,0.537225
+json,20,0,0,1.0,0.0,0.519758,0.784599,0.7,0.95,0.985,0.285,2699.867,1342.85,0.85519
+pydantic,20,0,0,0.95,0.0,0.490705,0.775493,0.75,0.9,0.95,0.2,2683.829,1450.05,0.846324
+structured_output,20,0,0,1.0,0.0,0.503615,0.771086,0.75,0.95,1.0,0.25,2819.818,1280.2,0.870663

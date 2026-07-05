@@ -1,0 +1,5 @@
+﻿temperature,runs,generation_errors,schema_adherence_rate,exact_match,avg_token_f1,avg_semantic_similarity,answer_correct_rate,citation_valid_rate,avg_confidence,confidence_mae,avg_generation_ms
+0.0,10,0,1.0,0.0,0.59669,0.800299,0.9,0.9,1.0,0.1,2512.779
+0.1,10,0,1.0,0.0,0.60664,0.797488,0.9,0.9,1.0,0.1,2524.871
+0.3,10,0,1.0,0.0,0.597316,0.805517,0.9,0.9,1.0,0.1,2499.446
+0.7,10,0,1.0,0.0,0.591563,0.800323,1.0,0.9,1.0,0.0,2611.849

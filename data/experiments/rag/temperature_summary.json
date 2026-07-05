@@ -1,0 +1,58 @@
+[
+  {
+    "temperature": 0.0,
+    "runs": 10,
+    "generation_errors": 0,
+    "schema_adherence_rate": 1.0,
+    "exact_match": 0.0,
+    "avg_token_f1": 0.59669,
+    "avg_semantic_similarity": 0.800299,
+    "answer_correct_rate": 0.9,
+    "citation_valid_rate": 0.9,
+    "avg_confidence": 1.0,
+    "confidence_mae": 0.1,
+    "avg_generation_ms": 2512.779
+  },
+  {
+    "temperature": 0.1,
+    "runs": 10,
+    "generation_errors": 0,
+    "schema_adherence_rate": 1.0,
+    "exact_match": 0.0,
+    "avg_token_f1": 0.60664,
+    "avg_semantic_similarity": 0.797488,
+    "answer_correct_rate": 0.9,
+    "citation_valid_rate": 0.9,
+    "avg_confidence": 1.0,
+    "confidence_mae": 0.1,
+    "avg_generation_ms": 2524.871
+  },
+  {
+    "temperature": 0.3,
+    "runs": 10,
+    "generation_errors": 0,
+    "schema_adherence_rate": 1.0,
+    "exact_match": 0.0,
+    "avg_token_f1": 0.597316,
+    "avg_semantic_similarity": 0.805517,
+    "answer_correct_rate": 0.9,
+    "citation_valid_rate": 0.9,
+    "avg_confidence": 1.0,
+    "confidence_mae": 0.1,
+    "avg_generation_ms": 2499.446
+  },
+  {
+    "temperature": 0.7,
+    "runs": 10,
+    "generation_errors": 0,
+    "schema_adherence_rate": 1.0,
+    "exact_match": 0.0,
+    "avg_token_f1": 0.591563,
+    "avg_semantic_similarity": 0.800323,
+    "answer_correct_rate": 1.0,
+    "citation_valid_rate": 0.9,
+    "avg_confidence": 1.0,
+    "confidence_mae": 0.0,
+    "avg_generation_ms": 2611.849
+  }
+]

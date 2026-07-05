@@ -62,6 +62,7 @@ class Settings:
     rrf_k: int
     bm25_weight: float
     llm_provider: str
+    prompt_strategy: str
     local_llm_base_url: str
     local_llm_model: str
     local_llm_api_key: str
@@ -124,6 +125,10 @@ class Settings:
                 "RAG_BM25_WEIGHT",
             ),
             llm_provider=os.getenv("RAG_LLM_PROVIDER", "yandex").strip().lower(),
+            prompt_strategy=os.getenv(
+                "RAG_PROMPT_STRATEGY",
+                "structured_output",
+            ).strip().lower(),
             local_llm_base_url=os.getenv(
                 "LOCAL_LLM_BASE_URL",
                 "http://127.0.0.1:1234/v1",
@@ -203,6 +208,15 @@ class Settings:
     def validate(self) -> None:
         if self.llm_provider not in {"lmstudio", "yandex"}:
             raise SettingsError("RAG_LLM_PROVIDER must be 'lmstudio' or 'yandex'")
+        if self.prompt_strategy not in {
+            "plain",
+            "json",
+            "pydantic",
+            "structured_output",
+        }:
+            raise SettingsError(
+                "RAG_PROMPT_STRATEGY must be plain, json, pydantic or structured_output"
+            )
         if not 1 <= self.top_k <= self.reranker_candidate_k <= self.candidate_k:
             raise SettingsError(
                 "Expected RAG_TOP_K <= RAG_RERANKER_CANDIDATE_K <= RAG_CANDIDATE_K"

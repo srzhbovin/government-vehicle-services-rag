@@ -1,0 +1,26 @@
+[
+  {
+    "k": 1,
+    "questions": 20,
+    "hit_rate": 0.55,
+    "recall_at_k": 0.55,
+    "mrr": 0.6975,
+    "avg_retrieval_ms": 180.806
+  },
+  {
+    "k": 3,
+    "questions": 20,
+    "hit_rate": 0.85,
+    "recall_at_k": 0.85,
+    "mrr": 0.6975,
+    "avg_retrieval_ms": 180.806
+  },
+  {
+    "k": 5,
+    "questions": 20,
+    "hit_rate": 0.95,
+    "recall_at_k": 0.95,
+    "mrr": 0.6975,
+    "avg_retrieval_ms": 180.806
+  }
+]

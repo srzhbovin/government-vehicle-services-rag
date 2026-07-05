@@ -14,6 +14,7 @@
 - гибридный retrieval BM25 + FAISS через Reciprocal Rank Fusion;
 - cross-encoder reranker `ms-marco-MiniLM-L2-v2` для первых 10 кандидатов;
 - генерацию ответа моделью `yandexgpt-5-lite` через Yandex AI Studio;
+- нативный Structured Output с JSON Schema и повторной Pydantic-валидацией;
 - локальную модель через LM Studio как дополнительный вариант;
 - FastAPI backend и Streamlit-интерфейс.
 
@@ -31,6 +32,8 @@ FastAPI (http://127.0.0.1:8000)
       Cross-encoder reranker
               ↓ top-5
   Yandex AI Studio / LM Studio
+              ↓
+ JSON Schema + Pydantic validation
               ↓
      Ответ и найденные источники
 ```
@@ -67,11 +70,17 @@ Copy-Item .env.example .env
 
 ```env
 RAG_LLM_PROVIDER=yandex
+RAG_PROMPT_STRATEGY=structured_output
 YANDEX_CLOUD_API_KEY=ваш_api_ключ
 YANDEX_CLOUD_FOLDER_ID=идентификатор_каталога
 YANDEX_GPT_MODEL=yandexgpt-5-lite
 YANDEX_GPT_FALLBACK_MODELS=yandexgpt-5.1,yandexgpt-5-pro
+YANDEX_TEMPERATURE=0.1
 ```
+
+`structured_output` — выбранная стратегия основного pipeline. Yandex получает JSON Schema с
+полями `answer`, `confidence` и `source`, а полученный объект дополнительно проверяется Pydantic.
+API-ключ хранится только в `.env`; этот файл исключён из Git.
 
 ## Запуск приложения
 
@@ -122,6 +131,9 @@ Invoke-RestMethod `
 
 Допустимые значения `language`: `auto`, `ru`, `en`.
 
+Ответ `/api/v1/ask` дополнительно содержит `prompt_strategy`, `confidence`, `source`,
+`structured_parse_success` и `schema_valid`.
+
 ## Локальная модель как запасной вариант
 
 Приложение также поддерживает OpenAI-совместимый API LM Studio. Для локального запуска без
@@ -162,8 +174,36 @@ data/current/indexes/retrieval/index_metadata.json
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Тесты проверяют загрузку документов, chunking, BM25, cosine, FAISS, RRF, prompt с источниками,
-Yandex fallback, локальный OpenAI-совместимый provider, FastAPI endpoints и валидацию запросов.
+Тесты проверяют загрузку документов, chunking, BM25, cosine, FAISS, RRF, четыре prompt-стратегии,
+Pydantic-валидацию, метрики оценки, Yandex fallback, локальный OpenAI-совместимый provider,
+FastAPI endpoints и валидацию запросов.
+
+## Повторение экспериментов
+
+Полный прогон создаёт тестовый набор, выполняет 80 сравнений prompt-стратегий и 30 запусков для
+сравнения temperature. Используются платные запросы Yandex AI Studio; выполнение занимает около
+5–10 минут.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_rag_evaluation.ps1
+```
+
+Если выполнение прервалось, продолжить с сохранённых результатов можно командой:
+
+```powershell
+.\.venv\Scripts\python.exe -m rag_pipeline.evaluate_rag --resume
+```
+
+Проверить только retrieval без обращений к Yandex:
+
+```powershell
+$env:HF_HUB_OFFLINE="1"
+$env:TRANSFORMERS_OFFLINE="1"
+.\.venv\Scripts\python.exe -m rag_pipeline.evaluate_rag --retrieval-only
+```
+
+Результаты сохраняются в `data/experiments/rag/`, отчёты — в
+`reports/prompt_engineering.md` и `reports/rag_quality.md`.
 
 ## Результаты retrieval-исследования
 
@@ -177,6 +217,61 @@ Yandex fallback, локальный OpenAI-совместимый provider, Fast
 - `data/experiments/retrieval/retrieval_comparison.csv`;
 - `data/experiments/retrieval/retrieval_per_query.jsonl`.
 
+## Результаты Prompt Engineering
+
+На 20 одинаковых вопросах сравнивались обычный prompt, JSON-prompt, prompt с Pydantic-схемой и
+нативный Structured Output Yandex Responses API. Retrieval-контекст и temperature `0.1` были
+одинаковыми для всех вариантов.
+
+| Вариант | Соблюдение схемы | Ошибки JSON | Correct | Semantic similarity | Валидные citations | Среднее время |
+|---|---:|---:|---:|---:|---:|---:|
+| Обычный prompt | — | 0 | 80% | 0.765 | 95% | 2521 мс |
+| JSON-prompt | 100% | 0 | 70% | 0.785 | 95% | 2700 мс |
+| Pydantic в prompt | 95% | 0 | 75% | 0.775 | 90% | 2684 мс |
+| Structured Output | 100% | 0 | 75% | 0.771 | 95% | 2820 мс |
+
+В основной pipeline выбран `structured_output`: он обеспечивает настоящий API-контракт, а не
+только текстовую просьбу вернуть JSON. Обычный prompt немного лучше прошёл эвристику корректности,
+но не гарантирует структуру. У Pydantic-варианта один ответ был JSON-объектом, однако не прошёл
+валидацию схемы.
+
+Поле `confidence` оказалось некалиброванным: Structured Output вернул `1.0` для всех вопросов,
+включая неполные ответы. Поэтому сейчас оно отображается как диагностическое значение и не
+используется для принятия решений.
+
+## Оценка качества текущего RAG
+
+Тестовый набор состоит из 19 самостоятельных validation-вопросов MultiDoc2Dial и одного ручного
+регрессионного вопроса о потерянных водительских правах.
+
+| k | Hit Rate | Recall@k | MRR | Среднее время retrieval |
+|---:|---:|---:|---:|---:|
+| 1 | 55% | 55% | 0.698 | 181 мс |
+| 3 | 85% | 85% | 0.698 | 181 мс |
+| 5 | 95% | 95% | 0.698 | 181 мс |
+
+Для итогового `structured_output`: Exact Match `0%`, token F1 `0.504`, semantic similarity
+`0.771`, автоматический correct rate `75%`. Exact Match равен нулю, потому что модель корректно
+переформулирует короткие эталоны; для генеративного ответа эта метрика слишком строгая.
+
+Temperature `0`, `0.1`, `0.3` и `0.7` не повлияла на соблюдение схемы: во всех случаях получено
+100%. На подмножестве из 10 вопросов `0.7` показала 100% по автоматической эвристике, однако одного
+прогона недостаточно, чтобы считать улучшение устойчивым. В pipeline оставлена `0.1` для более
+воспроизводимых ответов.
+
+### Основные типы ошибок
+
+- нужный документ находится в top-5, но в контекст попадает неподходящий чанк;
+- частное условие выдаётся вместо общего ответа — пример с формой MV-78B для потерянных прав;
+- внутренние ссылки документа вроде `[8]` смешиваются с номерами RAG-фрагментов;
+- `confidence` завышен и не отражает полноту ответа;
+- часть автоматических ошибок вызвана короткими или неполными gold-ответами: более подробный
+  корректный ответ получает низкое сходство.
+
+Ручная проверка показала две содержательные ошибки выбора контекста: вопрос о стоимости learner
+permit и вопрос о потерянных правах. Следующий этап оптимизации должен начинаться с query rewriting,
+учёта заголовков в BM25/reranker и выбора нескольких чанков внутри найденного документа.
+
 ## Структура актуального кода
 
 ```text
@@ -188,18 +283,25 @@ src/
     ├── schemas.py              # API-контракты Pydantic
     ├── retriever.py            # BM25 + FAISS + RRF + reranker
     ├── generator.py            # LM Studio и Yandex providers
+    ├── prompting.py            # четыре prompt-стратегии и схема ответа
+    ├── evaluation.py           # метрики retrieval, ответа и citations
+    ├── build_rag_test_set.py   # воспроизводимый тестовый набор
+    ├── evaluate_rag.py         # эксперименты Prompt Engineering и RAG
     ├── service.py              # единый RAG-сервис
     └── build_rag_index.py      # пересборка runtime-индекса
 
 streamlit_app.py                # пользовательский интерфейс
 scripts/run_backend.ps1         # запуск FastAPI
 scripts/run_frontend.ps1        # запуск Streamlit
+scripts/run_rag_evaluation.ps1  # полный эксперимент
 ```
 
 ## Ограничения базовой версии
 
-- Retrieval Recall@5 пока около 61%, поэтому часть вопросов не получает правильный контекст.
+- На полном test-наборе Retrieval Recall@5 пока `0.6106`, поэтому часть вопросов не получает
+  правильный контекст.
 - Диалоговая история и query rewriting ещё не реализованы.
-- Prompt пока один базовый; сравнение JSON, Pydantic и Structured Output будет отдельным этапом.
-- Параметры temperature, top-p и размер контекста пока не исследованы.
+- Выбор соседних и родительских чанков внутри релевантного документа ещё не реализован.
+- `confidence` модели не откалиброван.
+- Top-p и размер контекста пока не исследованы; temperature проверена только одним прогоном.
 - Для генерации через Yandex AI Studio нужны интернет, действующий ключ и доступная квота.

@@ -83,6 +83,7 @@ class RAGApplicationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
         self.assertEqual(response.json()["retrieval_method"], "hybrid_reranked")
+        self.assertEqual(response.json()["prompt_strategy"], "structured_output")
 
     def test_retrieve_endpoint(self):
         response = self.client.post(
@@ -102,6 +103,7 @@ class RAGApplicationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["answer"], "Grounded answer [1].")
         self.assertEqual(response.json()["usage"]["total_tokens"], 14)
+        self.assertEqual(response.json()["prompt_strategy"], "plain")
 
     def test_rejects_empty_question(self):
         response = self.client.post("/api/v1/ask", json={"question": " "})

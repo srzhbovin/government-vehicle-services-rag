@@ -16,6 +16,7 @@ from rag_pipeline.generator import (  # noqa: E402
     YandexGenerator,
     build_context_prompt,
 )
+from rag_pipeline.prompting import PromptStrategy  # noqa: E402
 from rag_pipeline.retriever import RetrievedChunk  # noqa: E402
 from rag_pipeline.settings import Settings  # noqa: E402
 
@@ -27,6 +28,7 @@ def settings_with_credentials(**changes):
         "yandex_folder_id": "folder-id",
         "yandex_model": "yandexgpt-5-lite",
         "yandex_fallback_models": (),
+        "prompt_strategy": "plain",
     }
     values.update(changes)
     return replace(settings, **values)
@@ -112,6 +114,38 @@ class GeneratorTests(unittest.TestCase):
         self.assertEqual(len(models), 2)
         self.assertTrue(models[1].endswith("yandexgpt-5.1"))
 
+    def test_native_structured_output_is_sent_and_parsed(self):
+        captured = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured["payload"] = json.loads(request.content)
+            return httpx.Response(
+                200,
+                json={
+                    "model": "gpt://folder-id/yandexgpt-5-lite",
+                    "output_text": json.dumps(
+                        {
+                            "answer": "Renew online [1].",
+                            "confidence": 0.95,
+                            "source": "[1]",
+                        }
+                    ),
+                },
+            )
+
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        result = YandexGenerator(
+            settings_with_credentials(prompt_strategy="structured_output"),
+            http_client=client,
+        ).generate("How do I renew?", [source()])
+
+        response_format = captured["payload"]["text"]["format"]
+        self.assertEqual(response_format["type"], "json_schema")
+        self.assertTrue(response_format["strict"])
+        self.assertEqual(result.answer, "Renew online [1].")
+        self.assertTrue(result.schema_valid)
+        self.assertEqual(result.confidence, 0.95)
+
     def test_does_not_expose_rejected_api_key(self):
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(
@@ -160,6 +194,7 @@ class GeneratorTests(unittest.TestCase):
             Settings.from_env(),
             llm_provider="lmstudio",
             local_llm_model="missing-model",
+            prompt_strategy="plain",
         )
         client = httpx.Client(transport=httpx.MockTransport(handler))
         result = LocalOpenAICompatibleGenerator(settings, client).generate(

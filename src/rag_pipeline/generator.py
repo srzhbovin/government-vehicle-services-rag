@@ -8,16 +8,17 @@ from typing import Any, Sequence
 
 import httpx
 
+from .prompting import (
+    PromptStrategy,
+    parse_model_answer,
+    prompt_spec,
+)
 from .retriever import RetrievedChunk
 from .schemas import GenerationUsage
 from .settings import Settings, SettingsError
 
 
-BASELINE_INSTRUCTIONS = """You are an assistant for government vehicle and DMV services.
-Answer only from the supplied document fragments. Do not use outside knowledge and do not invent
-requirements, dates, fees, addresses, or links. If the fragments do not contain enough information,
-say that the available documents are insufficient. Answer in the language of the user's question.
-Cite supporting fragments with markers such as [1] and [2]. Keep the answer concise and practical."""
+BASELINE_INSTRUCTIONS = prompt_spec(PromptStrategy.PLAIN).instructions
 
 
 class GenerationError(RuntimeError):
@@ -30,6 +31,13 @@ class GenerationResult:
     model: str
     usage: GenerationUsage
     elapsed_ms: float
+    prompt_strategy: str = PromptStrategy.PLAIN.value
+    confidence: float | None = None
+    source: str | None = None
+    parse_success: bool | None = None
+    schema_valid: bool | None = None
+    parse_error: str | None = None
+    raw_output: str | None = None
 
 
 def build_context_prompt(
@@ -79,19 +87,29 @@ class YandexGenerator:
         question: str,
         chunks: Sequence[RetrievedChunk],
         language: str = "auto",
+        strategy: PromptStrategy | str | None = None,
+        temperature: float | None = None,
     ) -> GenerationResult:
         try:
             self.settings.require_generator_credentials()
         except SettingsError as error:
             raise GenerationError(str(error)) from error
 
-        payload = {
+        selected_strategy = PromptStrategy(strategy or self.settings.prompt_strategy)
+        spec = prompt_spec(selected_strategy)
+        payload: dict[str, Any] = {
             "model": self.settings.yandex_model_uri,
-            "instructions": BASELINE_INSTRUCTIONS,
+            "instructions": spec.instructions,
             "input": build_context_prompt(question, chunks, language),
-            "temperature": self.settings.generation_temperature,
+            "temperature": (
+                self.settings.generation_temperature
+                if temperature is None
+                else temperature
+            ),
             "max_output_tokens": self.settings.generation_max_tokens,
         }
+        if spec.response_format is not None:
+            payload["text"] = {"format": spec.response_format}
         headers = {
             "Authorization": f"Api-Key {self.settings.yandex_api_key}",
             "Content-Type": "application/json",
@@ -144,11 +162,12 @@ class YandexGenerator:
                 client.close()
 
         assert data is not None
-        answer = _extract_output_text(data)
+        raw_output = _extract_output_text(data)
+        parsed = parse_model_answer(raw_output, selected_strategy)
         usage_data = data.get("usage") or {}
         elapsed_ms = (time.perf_counter() - started) * 1000
         return GenerationResult(
-            answer=answer,
+            answer=parsed.answer,
             model=str(data.get("model") or self.settings.yandex_model_uri),
             usage=GenerationUsage(
                 input_tokens=_optional_int(usage_data.get("input_tokens")),
@@ -156,6 +175,13 @@ class YandexGenerator:
                 total_tokens=_optional_int(usage_data.get("total_tokens")),
             ),
             elapsed_ms=elapsed_ms,
+            prompt_strategy=selected_strategy.value,
+            confidence=parsed.confidence,
+            source=parsed.source,
+            parse_success=parsed.parse_success,
+            schema_valid=parsed.schema_valid,
+            parse_error=parsed.parse_error,
+            raw_output=raw_output,
         )
 
 
@@ -180,7 +206,13 @@ class LocalOpenAICompatibleGenerator:
         question: str,
         chunks: Sequence[RetrievedChunk],
         language: str = "auto",
+        strategy: PromptStrategy | str | None = None,
+        temperature: float | None = None,
     ) -> GenerationResult:
+        selected_strategy = PromptStrategy(strategy or self.settings.prompt_strategy)
+        if selected_strategy is PromptStrategy.STRUCTURED_OUTPUT:
+            selected_strategy = PromptStrategy.PYDANTIC
+        spec = prompt_spec(selected_strategy)
         client = self._client or httpx.Client(
             timeout=self.settings.generation_timeout_seconds
         )
@@ -195,13 +227,17 @@ class LocalOpenAICompatibleGenerator:
                 json={
                     "model": model,
                     "messages": [
-                        {"role": "system", "content": BASELINE_INSTRUCTIONS},
+                        {"role": "system", "content": spec.instructions},
                         {
                             "role": "user",
                             "content": build_context_prompt(question, chunks, language),
                         },
                     ],
-                    "temperature": self.settings.generation_temperature,
+                    "temperature": (
+                        self.settings.generation_temperature
+                        if temperature is None
+                        else temperature
+                    ),
                     "max_tokens": self.settings.generation_max_tokens,
                     "stream": False,
                 },
@@ -224,14 +260,15 @@ class LocalOpenAICompatibleGenerator:
                 client.close()
 
         try:
-            answer = str(data["choices"][0]["message"]["content"]).strip()
+            raw_output = str(data["choices"][0]["message"]["content"]).strip()
         except (KeyError, IndexError, TypeError) as error:
             raise GenerationError("Local LLM server returned no text") from error
-        if not answer:
+        if not raw_output:
             raise GenerationError("Local LLM server returned an empty answer")
+        parsed = parse_model_answer(raw_output, selected_strategy)
         usage_data = data.get("usage") or {}
         return GenerationResult(
-            answer=answer,
+            answer=parsed.answer,
             model=str(data.get("model") or model),
             usage=GenerationUsage(
                 input_tokens=_optional_int(usage_data.get("prompt_tokens")),
@@ -239,6 +276,13 @@ class LocalOpenAICompatibleGenerator:
                 total_tokens=_optional_int(usage_data.get("total_tokens")),
             ),
             elapsed_ms=(time.perf_counter() - started) * 1000,
+            prompt_strategy=selected_strategy.value,
+            confidence=parsed.confidence,
+            source=parsed.source,
+            parse_success=parsed.parse_success,
+            schema_valid=parsed.schema_valid,
+            parse_error=parsed.parse_error,
+            raw_output=raw_output,
         )
 
     def _resolve_model(self, client: httpx.Client) -> str:
