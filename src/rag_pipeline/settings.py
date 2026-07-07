@@ -59,6 +59,10 @@ class Settings:
     candidate_k: int
     reranker_candidate_k: int
     top_k: int
+    context_window: int
+    context_intro_chunks: int
+    max_context_chunks: int
+    use_query_expansion: bool
     rrf_k: int
     bm25_weight: float
     llm_provider: str
@@ -72,8 +76,13 @@ class Settings:
     yandex_fallback_models: tuple[str, ...]
     yandex_api_url: str
     generation_temperature: float
+    generation_top_p: float
     generation_max_tokens: int
     generation_timeout_seconds: float
+    enable_judge: bool
+    judge_min_score: float
+    judge_temperature: float
+    judge_max_tokens: int
     eager_load: bool
     backend_url: str
 
@@ -114,10 +123,26 @@ class Settings:
             candidate_k=_as_int(os.getenv("RAG_CANDIDATE_K"), 60, "RAG_CANDIDATE_K"),
             reranker_candidate_k=_as_int(
                 os.getenv("RAG_RERANKER_CANDIDATE_K"),
-                10,
+                20,
                 "RAG_RERANKER_CANDIDATE_K",
             ),
-            top_k=_as_int(os.getenv("RAG_TOP_K"), 5, "RAG_TOP_K"),
+            top_k=_as_int(os.getenv("RAG_TOP_K"), 6, "RAG_TOP_K"),
+            context_window=_as_int(
+                os.getenv("RAG_CONTEXT_WINDOW"),
+                1,
+                "RAG_CONTEXT_WINDOW",
+            ),
+            context_intro_chunks=_as_int(
+                os.getenv("RAG_CONTEXT_INTRO_CHUNKS"),
+                3,
+                "RAG_CONTEXT_INTRO_CHUNKS",
+            ),
+            max_context_chunks=_as_int(
+                os.getenv("RAG_MAX_CONTEXT_CHUNKS"),
+                12,
+                "RAG_MAX_CONTEXT_CHUNKS",
+            ),
+            use_query_expansion=_as_bool(os.getenv("RAG_USE_QUERY_EXPANSION"), True),
             rrf_k=_as_int(os.getenv("RAG_RRF_K"), 60, "RAG_RRF_K"),
             bm25_weight=_as_float(
                 os.getenv("RAG_BM25_WEIGHT"),
@@ -159,6 +184,11 @@ class Settings:
                 0.1,
                 "YANDEX_TEMPERATURE",
             ),
+            generation_top_p=_as_float(
+                os.getenv("YANDEX_TOP_P"),
+                0.9,
+                "YANDEX_TOP_P",
+            ),
             generation_max_tokens=_as_int(
                 os.getenv("YANDEX_MAX_OUTPUT_TOKENS"),
                 700,
@@ -168,6 +198,22 @@ class Settings:
                 os.getenv("YANDEX_TIMEOUT_SECONDS"),
                 90.0,
                 "YANDEX_TIMEOUT_SECONDS",
+            ),
+            enable_judge=_as_bool(os.getenv("RAG_ENABLE_JUDGE"), True),
+            judge_min_score=_as_float(
+                os.getenv("RAG_JUDGE_MIN_SCORE"),
+                0.72,
+                "RAG_JUDGE_MIN_SCORE",
+            ),
+            judge_temperature=_as_float(
+                os.getenv("RAG_JUDGE_TEMPERATURE"),
+                0.0,
+                "RAG_JUDGE_TEMPERATURE",
+            ),
+            judge_max_tokens=_as_int(
+                os.getenv("RAG_JUDGE_MAX_OUTPUT_TOKENS"),
+                500,
+                "RAG_JUDGE_MAX_OUTPUT_TOKENS",
             ),
             eager_load=_as_bool(os.getenv("RAG_EAGER_LOAD"), True),
             backend_url=os.getenv("RAG_BACKEND_URL", "http://127.0.0.1:8000"),
@@ -223,9 +269,23 @@ class Settings:
             )
         if self.rrf_k < 1:
             raise SettingsError("RAG_RRF_K must be positive")
+        if self.context_window < 0:
+            raise SettingsError("RAG_CONTEXT_WINDOW cannot be negative")
+        if self.context_intro_chunks < 0:
+            raise SettingsError("RAG_CONTEXT_INTRO_CHUNKS cannot be negative")
+        if self.max_context_chunks < self.top_k:
+            raise SettingsError("RAG_MAX_CONTEXT_CHUNKS must be greater than or equal to RAG_TOP_K")
         if not 0 <= self.bm25_weight <= 1:
             raise SettingsError("RAG_BM25_WEIGHT must be between 0 and 1")
         if not 0 <= self.generation_temperature <= 1:
             raise SettingsError("YANDEX_TEMPERATURE must be between 0 and 1")
+        if not 0 <= self.generation_top_p <= 1:
+            raise SettingsError("YANDEX_TOP_P must be between 0 and 1")
         if self.generation_max_tokens < 1:
             raise SettingsError("YANDEX_MAX_OUTPUT_TOKENS must be positive")
+        if not 0 <= self.judge_min_score <= 1:
+            raise SettingsError("RAG_JUDGE_MIN_SCORE must be between 0 and 1")
+        if not 0 <= self.judge_temperature <= 1:
+            raise SettingsError("RAG_JUDGE_TEMPERATURE must be between 0 and 1")
+        if self.judge_max_tokens < 1:
+            raise SettingsError("RAG_JUDGE_MAX_OUTPUT_TOKENS must be positive")

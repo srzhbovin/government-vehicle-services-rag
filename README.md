@@ -1,307 +1,270 @@
-# DMV RAG: поиск по документам и генерация ответов
+# Government Vehicle Services RAG
 
-Рабочая Retrieval-Augmented Generation система на документах DMV из MultiDoc2Dial. Пользователь
-задаёт вопрос на русском или английском языке, система находит релевантные фрагменты документов,
-переранжирует их и передаёт YandexGPT. В ответе показываются номера и тексты использованных
-фрагментов.
+Проект реализует RAG-систему по документам DMV из MultiDoc2Dial. Система ищет релевантные фрагменты документов, передаёт их в LLM и возвращает ответ с источниками.
 
-Текущая версия включает:
+Текущая версия — базовый, но уже полноценный RAG: есть backend на FastAPI, интерфейс на Gradio, гибридный retrieval, structured output, настройка параметров генерации и защита от галлюцинаций через LLM-as-a-judge.
 
-- загрузку и нормализацию 149 документов MultiDoc2Dial DMV;
-- token chunking `120/0`, выбранный по результатам эксперимента;
-- эмбеддинги `sentence-transformers/all-MiniLM-L6-v2`;
-- точный индекс `FAISS IndexFlatIP`;
-- гибридный retrieval BM25 + FAISS через Reciprocal Rank Fusion;
-- cross-encoder reranker `ms-marco-MiniLM-L2-v2` для первых 10 кандидатов;
-- генерацию ответа моделью `yandexgpt-5-lite` через Yandex AI Studio;
-- нативный Structured Output с JSON Schema и повторной Pydantic-валидацией;
-- локальную модель через LM Studio как дополнительный вариант;
-- FastAPI backend и Streamlit-интерфейс.
+## Что сейчас входит в пайплайн
 
-## Архитектура
+1. Загрузка DMV-документов из MultiDoc2Dial.
+2. Очистка и подготовка документов.
+3. Разбиение документов на token chunks.
+4. Построение эмбеддингов через `sentence-transformers/all-MiniLM-L6-v2`.
+5. Индекс FAISS `IndexFlatIP`.
+6. BM25-поиск.
+7. Гибридный поиск BM25 + FAISS через weighted RRF.
+8. Cross-encoder reranker `cross-encoder/ms-marco-MiniLM-L2-v2`.
+9. Расширение контекста: к найденным чанкам добавляются начальные и соседние чанки того же документа.
+10. Генерация ответа через YandexGPT.
+11. Structured Output: модель возвращает структурированный объект `answer`, `confidence`, `source`.
+12. Проверка ответа через LLM-as-a-judge.
+13. FastAPI отдаёт результат в API.
+14. Gradio показывает ответ, параметры, judge-вердикт и найденные фрагменты.
+
+## Что изменено в последней итерации
+
+### 1. Защита от галлюцинаций
+
+Добавлен LLM-as-a-judge. После генерации ответа система делает отдельную проверку: действительно ли ответ следует из найденных фрагментов.
+
+Judge возвращает:
+
+```json
+{
+  "verdict": "grounded",
+  "score": 1.0,
+  "reason": "The answer is supported by the fragments.",
+  "corrected_answer": null,
+  "source": "[1], [2]"
+}
+```
+
+Если ответ не подтверждается контекстом, judge может вернуть исправленный ответ. Тогда API сохранит исходный ответ в `original_answer`, а пользователю покажет исправленную версию.
+
+### 2. Настраиваемые параметры
+
+В API и интерфейс добавлены параметры:
+
+- `top_k` — сколько основных retrieval-кандидатов брать;
+- `temperature` — насколько свободно модель формулирует ответ;
+- `top_p` — nucleus sampling;
+- `max_output_tokens` — лимит длины ответа;
+- `use_judge` — включать или выключать LLM-as-a-judge для конкретного запроса.
+
+Beam search отдельно не добавлялся: в текущем Yandex Responses API основной рабочий контроль генерации — это `temperature`, `top_p` и лимит токенов. Для RAG важнее качество retrieval-контекста и groundedness-проверка, чем beam search.
+
+### 3. Улучшение retrieval-контекста
+
+Проблема прошлой версии была не только в промпте. Иногда правильный документ находился, но в генерацию попадал не тот кусок документа. Например, для вопроса:
 
 ```text
-Streamlit (http://127.0.0.1:8501)
-              ↓ HTTP
-FastAPI (http://127.0.0.1:8000)
-              ↓
-     BM25 ───────── FAISS Flat
-              ↓
-       Reciprocal Rank Fusion
-              ↓
-      Cross-encoder reranker
-              ↓ top-5
-  Yandex AI Studio / LM Studio
-              ↓
- JSON Schema + Pydantic validation
-              ↓
-     Ответ и найденные источники
+What should I do if I lost my driver license?
 ```
 
-Retrieval и генерация разделены. Модель генерации, backend и интерфейс можно менять независимо,
-не перестраивая индекс.
+старая версия могла слишком сильно зацепиться за фрагмент про `MV-78B` или вообще за похожий документ про номерные знаки.
 
-## Требования
+Сейчас добавлено:
 
-- Windows 10/11;
-- Python 3.13;
-- 8 ГБ оперативной памяти минимум, 16 ГБ рекомендуется;
-- доступ в интернет и действующий API-ключ Yandex Cloud;
-- около 4 ГБ свободного места для Python-зависимостей и retrieval-моделей.
+- title-aware поиск: заголовок документа участвует в BM25, эмбеддингах и reranker;
+- простое query expansion для частых DMV-ситуаций вроде lost/stolen license;
+- context expansion: если найден важный чанк документа, в контекст добавляются первые и соседние чанки этого документа.
 
-## Установка
+На проблемном вопросе retrieval теперь сначала поднимает документ `Replace license or permit`, а в контекст попадают способы замены online/by mail/office и fee `$17.50`.
+
+### 4. Новый интерфейс на Gradio
+
+Streamlit-интерфейс заменён на Gradio. В интерфейсе можно:
+
+- задать вопрос;
+- выбрать язык ответа;
+- менять `top_k`, `temperature`, `top_p`, `max_output_tokens`;
+- включать/выключать judge;
+- видеть итоговый ответ;
+- видеть judge verdict, score и причину;
+- смотреть найденные фрагменты документов.
+
+## Быстрый запуск
+
+Команды ниже выполняются из корня проекта:
 
 ```powershell
-py -3.13 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m pip install -e .
+cd C:\Users\Sergey\Desktop\government_vehicle_services_rag\RAG
 ```
 
-## Настройка Yandex AI Studio
-
-Скопируйте шаблон конфигурации:
+### 1. Установить зависимости
 
 ```powershell
-Copy-Item .env.example .env
+powershell -ExecutionPolicy Bypass -File scripts/setup.ps1
 ```
 
-Заполните в `.env` API-ключ и идентификатор каталога Yandex Cloud:
+Если `.env` ещё нет, скрипт создаст его из `.env.example`. После этого нужно заполнить:
 
 ```env
-RAG_LLM_PROVIDER=yandex
-RAG_PROMPT_STRATEGY=structured_output
-YANDEX_CLOUD_API_KEY=ваш_api_ключ
-YANDEX_CLOUD_FOLDER_ID=идентификатор_каталога
-YANDEX_GPT_MODEL=yandexgpt-5-lite
-YANDEX_GPT_FALLBACK_MODELS=yandexgpt-5.1,yandexgpt-5-pro
-YANDEX_TEMPERATURE=0.1
+YANDEX_CLOUD_API_KEY=
+YANDEX_CLOUD_FOLDER_ID=
 ```
 
-`structured_output` — выбранная стратегия основного pipeline. Yandex получает JSON Schema с
-полями `answer`, `confidence` и `source`, а полученный объект дополнительно проверяется Pydantic.
-API-ключ хранится только в `.env`; этот файл исключён из Git.
+### 2. Пересобрать чанки и индекс
 
-## Запуск приложения
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/rebuild_pipeline.ps1
+```
+
+Этот шаг создаёт актуальные чанки, эмбеддинги и FAISS-индекс.
+
+### 3. Запустить backend и Gradio одной командой
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_app.ps1
+```
+
+После запуска:
+
+- FastAPI docs: `http://127.0.0.1:8000/docs`;
+- Gradio UI: `http://127.0.0.1:7860`.
+
+Остановить сервисы:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/stop_app.ps1
+```
+
+### Альтернативный запуск в двух терминалах
+
+Backend:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/run_backend.ps1
 ```
 
-Первый запуск может занять одну-две минуты: загружаются embedding-модель и reranker. После
-запуска доступны:
-
-- API: `http://127.0.0.1:8000`;
-- Swagger: `http://127.0.0.1:8000/docs`;
-- health check: `http://127.0.0.1:8000/health`.
+Frontend:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/run_frontend.ps1
 ```
 
-Откройте `http://127.0.0.1:8501`. 
+## Проверка API
 
-## Проверка API без Streamlit
-
-Только retrieval, без языковой модели:
+Health-check:
 
 ```powershell
-$body = @{ question = "How can I renew my vehicle registration?" } | ConvertTo-Json
-Invoke-RestMethod `
-  -Method Post `
-  -Uri http://127.0.0.1:8000/api/v1/retrieve `
-  -ContentType "application/json" `
-  -Body $body
+Invoke-RestMethod http://127.0.0.1:8000/health
 ```
 
-Полный ответ RAG на русском:
+Пример запроса к RAG:
 
 ```powershell
 $body = @{
-  question = "How quickly must I report a change of address to DMV?"
-  language = "ru"
+  question = "What should I do if I lost my driver license?"
+  language = "en"
+  top_k = 6
+  temperature = 0.1
+  top_p = 0.9
+  max_output_tokens = 700
+  use_judge = $true
 } | ConvertTo-Json
 
 Invoke-RestMethod `
-  -Method Post `
   -Uri http://127.0.0.1:8000/api/v1/ask `
+  -Method Post `
   -ContentType "application/json" `
   -Body $body
 ```
 
-Допустимые значения `language`: `auto`, `ru`, `en`.
-
-Ответ `/api/v1/ask` дополнительно содержит `prompt_strategy`, `confidence`, `source`,
-`structured_parse_success` и `schema_valid`.
-
-## Локальная модель как запасной вариант
-
-Приложение также поддерживает OpenAI-совместимый API LM Studio. Для локального запуска без
-облачной генерации установите LM Studio, скачайте `Gemma 3 4B Instruct`, включите сервер в разделе
-`Developer` и измените `.env`:
+## Основные настройки `.env`
 
 ```env
-RAG_LLM_PROVIDER=lmstudio
-LOCAL_LLM_BASE_URL=http://127.0.0.1:1234/v1
-LOCAL_LLM_MODEL=google/gemma-3-4b
+RAG_LLM_PROVIDER=yandex
+RAG_PROMPT_STRATEGY=structured_output
+
+YANDEX_TEMPERATURE=0.1
+YANDEX_TOP_P=0.9
+YANDEX_MAX_OUTPUT_TOKENS=700
+
+RAG_TOP_K=6
+RAG_CANDIDATE_K=60
+RAG_RERANKER_CANDIDATE_K=20
+RAG_BM25_WEIGHT=0.5
+RAG_RRF_K=60
+
+RAG_CONTEXT_WINDOW=1
+RAG_CONTEXT_INTRO_CHUNKS=3
+RAG_MAX_CONTEXT_CHUNKS=12
+RAG_USE_QUERY_EXPANSION=true
+
+RAG_ENABLE_JUDGE=true
+RAG_JUDGE_MIN_SCORE=0.72
+RAG_JUDGE_TEMPERATURE=0.0
+RAG_JUDGE_MAX_OUTPUT_TOKENS=500
 ```
 
-Если заданная модель отсутствует, приложение выберет первую доступную текстовую модель LM Studio.
+## Результаты экспериментов
 
-## Пересборка данных и индекса
+### Retrieval methods
 
-Готовые чанки, эмбеддинги и FAISS-индекс уже находятся в репозитории. Полная пересборка нужна
-только при изменении документов, chunking или embedding-модели.
+На предыдущем этапе сравнивались cosine similarity, BM25, FAISS, hybrid BM25 + FAISS и hybrid + reranker.
 
-```powershell
-.\.venv\Scripts\python.exe src\rag_pipeline\import_multidoc2dial_dmv.py
-.\.venv\Scripts\python.exe src\rag_pipeline\build_token_chunks.py
-.\.venv\Scripts\python.exe -m rag_pipeline.build_rag_index
-```
+По итогам был выбран `hybrid_reranked`, потому что он дал лучший результат на full test:
 
-Результаты сохраняются в:
+- Recall@1: `0.3949`;
+- Recall@3: `0.5356`;
+- Recall@5: `0.6106`;
+- Recall@10: `0.6590`;
+- MRR@10: `0.4814`.
 
-```text
-data/current/prepared/dmv_chunks_token_120_0.jsonl
-data/current/indexes/retrieval/chunk_embeddings.npy
-data/current/indexes/retrieval/faiss_flat.index
-data/current/indexes/retrieval/index_metadata.json
-```
+Подробности сохранены в `reports/retrieval_comparison.md`.
 
-## Тесты
+### Prompt Engineering
 
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
-```
+Сравнивались:
 
-Тесты проверяют загрузку документов, chunking, BM25, cosine, FAISS, RRF, четыре prompt-стратегии,
-Pydantic-валидацию, метрики оценки, Yandex fallback, локальный OpenAI-совместимый provider,
-FastAPI endpoints и валидацию запросов.
+- обычный plain prompt;
+- JSON prompt;
+- prompt с Pydantic schema;
+- native Structured Output.
 
-## Повторение экспериментов
+Для основного пайплайна выбран `structured_output`. Он не гарантирует, что ответ всегда идеален по смыслу, но делает формат ответа стабильным для backend: модель возвращает объект, который затем проверяется через Pydantic.
 
-Полный прогон создаёт тестовый набор, выполняет 80 сравнений prompt-стратегий и 30 запусков для
-сравнения temperature. Используются платные запросы Yandex AI Studio; выполнение занимает около
-5–10 минут.
+Подробности сохранены в `reports/prompt_engineering.md`.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/run_rag_evaluation.ps1
-```
+### RAG quality до последней итерации
 
-Если выполнение прервалось, продолжить с сохранённых результатов можно командой:
+На диагностическом наборе из 20 самостоятельных вопросов было:
 
-```powershell
-.\.venv\Scripts\python.exe -m rag_pipeline.evaluate_rag --resume
-```
+- Hit@1: `55%`;
+- Hit@3: `85%`;
+- Hit@5: `95%`;
+- semantic similarity: `0.771`;
+- условно корректные ответы: `75%`;
+- Exact Match: `0%`.
 
-Проверить только retrieval без обращений к Yandex:
+Exact Match равен нулю не потому, что все ответы плохие, а потому что генеративная модель формулирует ответ иначе, чем короткий эталон.
 
-```powershell
-$env:HF_HUB_OFFLINE="1"
-$env:TRANSFORMERS_OFFLINE="1"
-.\.venv\Scripts\python.exe -m rag_pipeline.evaluate_rag --retrieval-only
-```
+### Sanity-check после последней итерации
 
-Результаты сохраняются в `data/experiments/rag/`, отчёты — в
-`reports/prompt_engineering.md` и `reports/rag_quality.md`.
+После title-aware retrieval, query expansion и пересборки индекса быстрый sanity-check на тех же 20 вопросах для чистого retrieval без context expansion дал:
 
-## Результаты retrieval-исследования
+- Hit@1: `65%`;
+- Hit@3: `95%`;
+- Hit@5: `95%`;
+- MRR: `0.775`.
 
-На test-наборе лучший вариант `hybrid_reranked` получил Recall@5 `0.6106`. Без reranker гибрид
-получил `0.5795`, BM25 — `0.5759`, FAISS — `0.5411`. Поэтому runtime использует hybrid retrieval
-с reranker и передаёт генератору пять лучших фрагментов.
+Context expansion отдельно не стоит сравнивать с обычным Hit@5 напрямую: он специально добавляет соседние чанки одного документа, поэтому top-5 может стать менее разнообразным, зато генератор получает более полный контекст.
 
-Подробные результаты:
+Ручная проверка проблемного вопроса `What should I do if I lost my driver license?` теперь проходит лучше: система поднимает документ `Replace license or permit`, отвечает про online/by mail/office и fee `$17.50`, а judge помечает ответ как `grounded`.
 
-- `reports/retrieval_comparison.md`;
-- `data/experiments/retrieval/retrieval_comparison.csv`;
-- `data/experiments/retrieval/retrieval_per_query.jsonl`.
+## Текущие ограничения
 
-## Результаты Prompt Engineering
+- Judge повышает надёжность, но добавляет второй LLM-вызов и увеличивает задержку.
+- `confidence` от генератора пока нельзя считать строгой вероятностью правильности.
+- Context expansion улучшает полноту ответа, но может ухудшать классические retrieval-метрики из-за повторов одного документа.
+- Query expansion пока простой и rule-based. Это лучше, чем ничего, но дальше его стоит заменить на отдельный query rewriting шаг.
+- Корпус документов английский, поэтому русские вопросы потенциально стоит переводить/нормализовать перед retrieval.
 
-На 20 одинаковых вопросах сравнивались обычный prompt, JSON-prompt, prompt с Pydantic-схемой и
-нативный Structured Output Yandex Responses API. Retrieval-контекст и temperature `0.1` были
-одинаковыми для всех вариантов.
+## Что логично улучшать дальше
 
-| Вариант | Соблюдение схемы | Ошибки JSON | Correct | Semantic similarity | Валидные citations | Среднее время |
-|---|---:|---:|---:|---:|---:|---:|
-| Обычный prompt | — | 0 | 80% | 0.765 | 95% | 2521 мс |
-| JSON-prompt | 100% | 0 | 70% | 0.785 | 95% | 2700 мс |
-| Pydantic в prompt | 95% | 0 | 75% | 0.775 | 90% | 2684 мс |
-| Structured Output | 100% | 0 | 75% | 0.771 | 95% | 2820 мс |
-
-В основной pipeline выбран `structured_output`: он обеспечивает настоящий API-контракт, а не
-только текстовую просьбу вернуть JSON. Обычный prompt немного лучше прошёл эвристику корректности,
-но не гарантирует структуру. У Pydantic-варианта один ответ был JSON-объектом, однако не прошёл
-валидацию схемы.
-
-Поле `confidence` оказалось некалиброванным: Structured Output вернул `1.0` для всех вопросов,
-включая неполные ответы. Поэтому сейчас оно отображается как диагностическое значение и не
-используется для принятия решений.
-
-## Оценка качества текущего RAG
-
-Тестовый набор состоит из 19 самостоятельных validation-вопросов MultiDoc2Dial и одного ручного
-регрессионного вопроса о потерянных водительских правах.
-
-| k | Hit Rate | Recall@k | MRR | Среднее время retrieval |
-|---:|---:|---:|---:|---:|
-| 1 | 55% | 55% | 0.698 | 181 мс |
-| 3 | 85% | 85% | 0.698 | 181 мс |
-| 5 | 95% | 95% | 0.698 | 181 мс |
-
-Для итогового `structured_output`: Exact Match `0%`, token F1 `0.504`, semantic similarity
-`0.771`, автоматический correct rate `75%`. Exact Match равен нулю, потому что модель корректно
-переформулирует короткие эталоны; для генеративного ответа эта метрика слишком строгая.
-
-Temperature `0`, `0.1`, `0.3` и `0.7` не повлияла на соблюдение схемы: во всех случаях получено
-100%. На подмножестве из 10 вопросов `0.7` показала 100% по автоматической эвристике, однако одного
-прогона недостаточно, чтобы считать улучшение устойчивым. В pipeline оставлена `0.1` для более
-воспроизводимых ответов.
-
-### Основные типы ошибок
-
-- нужный документ находится в top-5, но в контекст попадает неподходящий чанк;
-- частное условие выдаётся вместо общего ответа — пример с формой MV-78B для потерянных прав;
-- внутренние ссылки документа вроде `[8]` смешиваются с номерами RAG-фрагментов;
-- `confidence` завышен и не отражает полноту ответа;
-- часть автоматических ошибок вызвана короткими или неполными gold-ответами: более подробный
-  корректный ответ получает низкое сходство.
-
-Ручная проверка показала две содержательные ошибки выбора контекста: вопрос о стоимости learner
-permit и вопрос о потерянных правах. Следующий этап оптимизации должен начинаться с query rewriting,
-учёта заголовков в BM25/reranker и выбора нескольких чанков внутри найденного документа.
-
-## Структура актуального кода
-
-```text
-src/
-├── backend/
-│   └── main.py                 # FastAPI endpoints
-└── rag_pipeline/
-    ├── settings.py             # переменные окружения
-    ├── schemas.py              # API-контракты Pydantic
-    ├── retriever.py            # BM25 + FAISS + RRF + reranker
-    ├── generator.py            # LM Studio и Yandex providers
-    ├── prompting.py            # четыре prompt-стратегии и схема ответа
-    ├── evaluation.py           # метрики retrieval, ответа и citations
-    ├── build_rag_test_set.py   # воспроизводимый тестовый набор
-    ├── evaluate_rag.py         # эксперименты Prompt Engineering и RAG
-    ├── service.py              # единый RAG-сервис
-    └── build_rag_index.py      # пересборка runtime-индекса
-
-streamlit_app.py                # пользовательский интерфейс
-scripts/run_backend.ps1         # запуск FastAPI
-scripts/run_frontend.ps1        # запуск Streamlit
-scripts/run_rag_evaluation.ps1  # полный эксперимент
-```
-
-## Ограничения базовой версии
-
-- На полном test-наборе Retrieval Recall@5 пока `0.6106`, поэтому часть вопросов не получает
-  правильный контекст.
-- Диалоговая история и query rewriting ещё не реализованы.
-- Выбор соседних и родительских чанков внутри релевантного документа ещё не реализован.
-- `confidence` модели не откалиброван.
-- Top-p и размер контекста пока не исследованы; temperature проверена только одним прогоном.
-- Для генерации через Yandex AI Studio нужны интернет, действующий ключ и доступная квота.
+1. Сделать отдельный query rewriting: превращать диалоговый или размытый вопрос в самостоятельный поисковый запрос.
+2. Добавить document-level retrieval: сначала выбирать документ, потом лучшие чанки внутри него.
+3. Разделить retrieval-метрики и generation-context метрики, чтобы context expansion не путал оценку.
+4. Добавить chat-RAG для вопросов с историей диалога из MultiDoc2Dial.
+5. Оценить judge на большем наборе: сколько ошибок он ловит и сколько раз зря исправляет хороший ответ.

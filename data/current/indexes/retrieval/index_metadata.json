@@ -1,15 +1,15 @@
 {
-  "created_at_utc": "2026-07-02T17:08:07.090761+00:00",
+  "created_at_utc": "2026-07-07T13:18:54.392438+00:00",
   "chunks_path": "data\\current\\prepared\\dmv_chunks_token_120_0.jsonl",
   "chunks_sha256": "5578841956f60530fe14c752905e18dcb8575759c194fde731c69d8adf0ff188",
   "chunks": 1152,
   "embedding_backend": "sentence-transformers",
   "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "embedding_text": "title_plus_text",
   "dimension": 384,
   "faiss_index": "data\\current\\indexes\\retrieval\\faiss_flat.index",
   "faiss_index_size_bytes": 1769517,
-  "selected_method": "hybrid_reranked",
-  "selection_rule": "validation recall@5, then mrr@10, recall@10, latency",
+  "runtime_retrieval_method": "hybrid_reranked",
   "bm25": {
     "k1": 1.5,
     "b": 0.75
@@ -19,5 +19,6 @@
     "bm25_weight": 0.5
   },
   "reranker_model": "cross-encoder/ms-marco-MiniLM-L2-v2",
-  "reranker_candidate_k": 10
+  "reranker_candidate_k": 20,
+  "build_ms": 51201.637999969535
 }

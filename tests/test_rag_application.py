@@ -10,7 +10,7 @@ SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
 from backend.main import create_app  # noqa: E402
-from rag_pipeline.generator import GenerationResult  # noqa: E402
+from rag_pipeline.generator import GenerationResult, GuardrailResult  # noqa: E402
 from rag_pipeline.retriever import (  # noqa: E402
     RetrievalResult,
     RetrievedChunk,
@@ -47,12 +47,33 @@ class FakeRetriever:
 class FakeGenerator:
     configured = True
 
-    def generate(self, question, chunks, language="auto"):
+    def generate(
+        self,
+        question,
+        chunks,
+        language="auto",
+        strategy=None,
+        temperature=None,
+        top_p=None,
+        max_output_tokens=None,
+    ):
         return GenerationResult(
             answer="Grounded answer [1].",
             model="fake-model",
             usage=GenerationUsage(input_tokens=10, output_tokens=4, total_tokens=14),
             elapsed_ms=20.0,
+        )
+
+    def judge_answer(self, question, chunks, answer, language="auto"):
+        return GuardrailResult(
+            checked=True,
+            accepted=True,
+            verdict="grounded",
+            score=0.95,
+            reason="The answer is supported.",
+            elapsed_ms=8.0,
+            parse_success=True,
+            schema_valid=True,
         )
 
 
@@ -64,6 +85,9 @@ class RAGApplicationTests(unittest.TestCase):
             eager_load=False,
             yandex_api_key="test",
             yandex_folder_id="folder",
+            top_k=6,
+            reranker_candidate_k=20,
+            max_context_chunks=12,
         )
         service = RAGService(
             settings,
@@ -84,6 +108,7 @@ class RAGApplicationTests(unittest.TestCase):
         self.assertEqual(response.json()["status"], "ok")
         self.assertEqual(response.json()["retrieval_method"], "hybrid_reranked")
         self.assertEqual(response.json()["prompt_strategy"], "structured_output")
+        self.assertTrue(response.json()["judge_enabled"])
 
     def test_retrieve_endpoint(self):
         response = self.client.post(
@@ -104,6 +129,9 @@ class RAGApplicationTests(unittest.TestCase):
         self.assertEqual(response.json()["answer"], "Grounded answer [1].")
         self.assertEqual(response.json()["usage"]["total_tokens"], 14)
         self.assertEqual(response.json()["prompt_strategy"], "plain")
+        self.assertEqual(response.json()["top_k"], 6)
+        self.assertTrue(response.json()["guardrail"]["accepted"])
+        self.assertFalse(response.json()["guardrail"]["corrected"])
 
     def test_rejects_empty_question(self):
         response = self.client.post("/api/v1/ask", json={"question": " "})

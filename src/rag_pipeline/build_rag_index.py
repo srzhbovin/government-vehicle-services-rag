@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 import numpy as np
 
 from .compare_retrieval_methods import read_jsonl
-from .retriever import file_sha256
+from .retriever import chunk_search_text, file_sha256
 from .settings import Settings
 
 
@@ -24,7 +24,7 @@ def build_index(settings: Settings) -> dict[str, object]:
         ) from error
 
     chunks = read_jsonl(settings.chunks_path)
-    texts = [str(chunk["text"]) for chunk in chunks]
+    texts = [chunk_search_text(chunk) for chunk in chunks]
     model_kwargs = {"device": settings.device} if settings.device else {}
     model = SentenceTransformer(settings.embedding_model, **model_kwargs)
 
@@ -51,6 +51,7 @@ def build_index(settings: Settings) -> dict[str, object]:
         "chunks": len(chunks),
         "embedding_backend": "sentence-transformers",
         "embedding_model": settings.embedding_model,
+        "embedding_text": "title_plus_text",
         "dimension": int(vectors.shape[1]),
         "faiss_index": str(settings.index_path.relative_to(settings.project_root)),
         "faiss_index_size_bytes": settings.index_path.stat().st_size,
@@ -90,4 +91,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

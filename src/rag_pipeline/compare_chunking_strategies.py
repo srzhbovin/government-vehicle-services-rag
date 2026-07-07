@@ -22,9 +22,14 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-from compress_documents_bm25 import split_segments, tokenize
-from evaluate_bm25_retrieval import evaluate, read_jsonl
-from recursive_chunk_documents import chunk_document as recursive_chunk_document
+try:
+    from .compress_documents_bm25 import split_segments, tokenize
+    from .evaluate_bm25_retrieval import evaluate, read_jsonl
+    from .recursive_chunk_documents import chunk_document as recursive_chunk_document
+except ImportError:
+    from compress_documents_bm25 import split_segments, tokenize
+    from evaluate_bm25_retrieval import evaluate, read_jsonl
+    from recursive_chunk_documents import chunk_document as recursive_chunk_document
 
 
 ROOT = Path(__file__).resolve().parents[2]

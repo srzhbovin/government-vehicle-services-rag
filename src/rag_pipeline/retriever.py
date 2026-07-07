@@ -44,6 +44,59 @@ class RetrievalResult:
     elapsed_ms: float
 
 
+def chunk_search_text(chunk: dict[str, Any]) -> str:
+    """Text used for embeddings and lexical search."""
+
+    title = str(chunk.get("title") or chunk.get("document_id") or "").strip()
+    text = str(chunk.get("text") or "").strip()
+    if not title:
+        return text
+    return f"{title}\n{title}\n{text}"
+
+
+def chunk_rerank_text(chunk: dict[str, Any]) -> str:
+    title = str(chunk.get("title") or chunk.get("document_id") or "").strip()
+    text = str(chunk.get("text") or "").strip()
+    return f"Title: {title}\nText: {text}" if title else text
+
+
+def expand_query(query: str) -> str:
+    """Small DMV-specific query expansion for common ambiguous requests."""
+
+    normalized = query.lower()
+    additions: list[str] = []
+    lost_terms = ("lost", "stolen", "destroyed", "missing")
+
+    if any(term in normalized for term in lost_terms):
+        if "license" in normalized or "permit" in normalized:
+            additions.extend(
+                [
+                    "replace license or permit",
+                    "duplicate driver license",
+                    "replace online",
+                    "replace by mail",
+                    "DMV office",
+                    "$17.50 fee",
+                ]
+            )
+        if "plate" in normalized or "plates" in normalized:
+            additions.extend(
+                [
+                    "lost stolen destroyed plates",
+                    "surrender registration",
+                    "police report",
+                    "MV-78B",
+                ]
+            )
+
+    if "change" in normalized and "address" in normalized:
+        additions.extend(["change address", "within 10 days", "license permit registration"])
+
+    if not additions:
+        return query
+    return query + "\n" + " ".join(dict.fromkeys(additions))
+
+
 def file_sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as file:
@@ -103,7 +156,7 @@ class HybridRetriever:
             )
 
         self.chunks = read_jsonl(self.settings.chunks_path)
-        chunk_texts = [str(chunk["text"]) for chunk in self.chunks]
+        chunk_texts = [chunk_search_text(chunk) for chunk in self.chunks]
         self.bm25 = BM25Retriever(chunk_texts)
 
         try:
@@ -144,8 +197,9 @@ class HybridRetriever:
 
         started = time.perf_counter()
         with self._inference_lock:
+            search_query = expand_query(query) if self.settings.use_query_expansion else query
             query_vector = self.encoder.encode(
-                [query],
+                [search_query],
                 convert_to_numpy=True,
                 normalize_embeddings=True,
                 show_progress_bar=False,
@@ -160,7 +214,7 @@ class HybridRetriever:
                 for score, index in zip(faiss_scores[0], faiss_indices[0])
                 if index >= 0
             ]
-            bm25_ranking = self.bm25.search(query, candidate_k)
+            bm25_ranking = self.bm25.search(search_query, candidate_k)
             fused = reciprocal_rank_fusion(
                 [bm25_ranking, faiss_ranking],
                 top_k=candidate_k,
@@ -174,16 +228,17 @@ class HybridRetriever:
             ranking = fused
             if self.reranker is not None:
                 ranking = self.reranker.rerank_many(
-                    [query],
+                    [search_query],
                     [fused[: self.settings.reranker_candidate_k]],
-                    [str(chunk["text"]) for chunk in self.chunks],
+                    [chunk_rerank_text(chunk) for chunk in self.chunks],
                     top_k=max(requested_k, self.settings.top_k),
                     batch_size=self.settings.reranker_candidate_k,
                 )[0]
+            ranking = self._expand_context(ranking, requested_k)
 
         elapsed_ms = (time.perf_counter() - started) * 1000
         output = []
-        for rank, item in enumerate(ranking[:requested_k], start=1):
+        for rank, item in enumerate(ranking, start=1):
             chunk = self.chunks[item.chunk_index]
             output.append(
                 RetrievedChunk(
@@ -202,3 +257,57 @@ class HybridRetriever:
             elapsed_ms=elapsed_ms,
         )
 
+    def _expand_context(
+        self,
+        ranking: list[RankedItem],
+        requested_k: int,
+    ) -> list[RankedItem]:
+        if not ranking:
+            return []
+        if self.settings.context_window == 0 and self.settings.context_intro_chunks == 0:
+            return ranking[:requested_k]
+        limit = max(requested_k, self.settings.max_context_chunks)
+
+        by_document: dict[str, list[int]] = {}
+        for global_index, chunk in enumerate(self.chunks):
+            document_id = str(chunk.get("document_id"))
+            by_document.setdefault(document_id, []).append(global_index)
+        for indices in by_document.values():
+            indices.sort(key=lambda index: int(self.chunks[index].get("chunk_index") or 0))
+
+        selected: list[RankedItem] = []
+        seen: set[int] = set()
+
+        def add(chunk_index: int, score: float) -> None:
+            if chunk_index in seen or len(selected) >= limit:
+                return
+            seen.add(chunk_index)
+            selected.append(RankedItem(chunk_index, score))
+
+        for item in ranking[:requested_k]:
+            chunk = self.chunks[item.chunk_index]
+            document_id = str(chunk.get("document_id"))
+            local_index = int(chunk.get("chunk_index") or 0)
+            document_indices = by_document.get(document_id, [])
+
+            intro_indices = document_indices[: self.settings.context_intro_chunks]
+            neighbor_indices = [
+                index
+                for index in document_indices
+                if abs(int(self.chunks[index].get("chunk_index") or 0) - local_index)
+                <= self.settings.context_window
+            ]
+            context_indices = sorted(
+                {*intro_indices, *neighbor_indices, item.chunk_index},
+                key=lambda index: int(self.chunks[index].get("chunk_index") or 0),
+            )
+            for index in context_indices:
+                add(index, item.score)
+            if len(selected) >= limit:
+                break
+
+        for item in ranking:
+            add(item.chunk_index, item.score)
+            if len(selected) >= limit:
+                break
+        return selected

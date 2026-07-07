@@ -11,7 +11,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from compress_documents_bm25 import tokenize
+try:
+    from .compress_documents_bm25 import tokenize
+except ImportError:
+    from compress_documents_bm25 import tokenize
 
 
 ROOT = Path(__file__).resolve().parents[2]

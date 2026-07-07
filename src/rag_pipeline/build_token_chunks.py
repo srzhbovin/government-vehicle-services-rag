@@ -8,8 +8,12 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
-from compare_chunking_strategies import ChunkConfig, build_chunks
-from evaluate_bm25_retrieval import read_jsonl
+try:
+    from .compare_chunking_strategies import ChunkConfig, build_chunks
+    from .evaluate_bm25_retrieval import read_jsonl
+except ImportError:
+    from compare_chunking_strategies import ChunkConfig, build_chunks
+    from evaluate_bm25_retrieval import read_jsonl
 
 
 ROOT = Path(__file__).resolve().parents[2]

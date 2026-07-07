@@ -90,6 +90,7 @@ class GeneratorTests(unittest.TestCase):
         self.assertEqual(result.usage.total_tokens, 112)
         self.assertEqual(captured["authorization"], "Api-Key test-secret")
         self.assertIn("Answer only", captured["payload"]["instructions"])
+        self.assertEqual(captured["payload"]["top_p"], settings_with_credentials().generation_top_p)
 
     def test_falls_back_when_model_is_not_available(self):
         models = []
@@ -146,6 +147,40 @@ class GeneratorTests(unittest.TestCase):
         self.assertTrue(result.schema_valid)
         self.assertEqual(result.confidence, 0.95)
 
+    def test_yandex_judge_is_sent_and_parsed(self):
+        captured = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured["payload"] = json.loads(request.content)
+            return httpx.Response(
+                200,
+                json={
+                    "model": "gpt://folder-id/yandexgpt-5-lite",
+                    "output_text": json.dumps(
+                        {
+                            "verdict": "grounded",
+                            "score": 0.92,
+                            "reason": "Supported by fragment [1].",
+                            "corrected_answer": None,
+                            "source": "[1]",
+                        }
+                    ),
+                },
+            )
+
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        result = YandexGenerator(
+            settings_with_credentials(prompt_strategy="structured_output"),
+            http_client=client,
+        ).judge_answer("How do I renew?", [source()], "Renew online [1].")
+
+        response_format = captured["payload"]["text"]["format"]
+        self.assertEqual(response_format["type"], "json_schema")
+        self.assertTrue(response_format["strict"])
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.verdict, "grounded")
+        self.assertEqual(result.score, 0.92)
+
     def test_does_not_expose_rejected_api_key(self):
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(
@@ -162,6 +197,26 @@ class GeneratorTests(unittest.TestCase):
 
         self.assertNotIn("test-secret", str(context.exception))
         self.assertIn("API key was rejected", str(context.exception))
+
+    def test_yandex_failed_200_response_is_reported(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "status": "failed",
+                    "error": {"message": "Invalid JSON Schema"},
+                    "output": [],
+                },
+            )
+
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        with self.assertRaises(GenerationError) as context:
+            YandexGenerator(
+                settings_with_credentials(),
+                http_client=client,
+            ).generate("Question", [source()])
+
+        self.assertIn("Invalid JSON Schema", str(context.exception))
 
     def test_local_generator_uses_available_model_and_language(self):
         requests = []

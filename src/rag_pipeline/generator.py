@@ -9,8 +9,11 @@ from typing import Any, Sequence
 import httpx
 
 from .prompting import (
+    JUDGE_INSTRUCTIONS,
     PromptStrategy,
+    judge_response_format,
     parse_model_answer,
+    parse_judge_answer,
     prompt_spec,
 )
 from .retriever import RetrievedChunk
@@ -38,6 +41,21 @@ class GenerationResult:
     schema_valid: bool | None = None
     parse_error: str | None = None
     raw_output: str | None = None
+
+
+@dataclass(frozen=True)
+class GuardrailResult:
+    checked: bool
+    accepted: bool | None
+    verdict: str | None
+    score: float | None
+    reason: str | None
+    corrected_answer: str | None = None
+    source: str | None = None
+    elapsed_ms: float | None = None
+    parse_success: bool | None = None
+    schema_valid: bool | None = None
+    parse_error: str | None = None
 
 
 def build_context_prompt(
@@ -69,6 +87,20 @@ def build_context_prompt(
     )
 
 
+def build_judge_prompt(
+    question: str,
+    chunks: Sequence[RetrievedChunk],
+    answer: str,
+    language: str = "auto",
+) -> str:
+    return (
+        build_context_prompt(question, chunks, language)
+        + "\n\nASSISTANT ANSWER TO CHECK\n"
+        + answer
+        + "\n\nReturn the groundedness judgment."
+    )
+
+
 class YandexGenerator:
     def __init__(
         self,
@@ -89,6 +121,8 @@ class YandexGenerator:
         language: str = "auto",
         strategy: PromptStrategy | str | None = None,
         temperature: float | None = None,
+        top_p: float | None = None,
+        max_output_tokens: int | None = None,
     ) -> GenerationResult:
         try:
             self.settings.require_generator_credentials()
@@ -106,7 +140,12 @@ class YandexGenerator:
                 if temperature is None
                 else temperature
             ),
-            "max_output_tokens": self.settings.generation_max_tokens,
+            "top_p": self.settings.generation_top_p if top_p is None else top_p,
+            "max_output_tokens": (
+                self.settings.generation_max_tokens
+                if max_output_tokens is None
+                else max_output_tokens
+            ),
         }
         if spec.response_format is not None:
             payload["text"] = {"format": spec.response_format}
@@ -162,6 +201,7 @@ class YandexGenerator:
                 client.close()
 
         assert data is not None
+        _raise_yandex_error_if_present(data, "Yandex AI Studio")
         raw_output = _extract_output_text(data)
         parsed = parse_model_answer(raw_output, selected_strategy)
         usage_data = data.get("usage") or {}
@@ -182,6 +222,100 @@ class YandexGenerator:
             schema_valid=parsed.schema_valid,
             parse_error=parsed.parse_error,
             raw_output=raw_output,
+        )
+
+    def judge_answer(
+        self,
+        question: str,
+        chunks: Sequence[RetrievedChunk],
+        answer: str,
+        language: str = "auto",
+    ) -> GuardrailResult:
+        try:
+            self.settings.require_generator_credentials()
+        except SettingsError as error:
+            raise GenerationError(str(error)) from error
+
+        payload: dict[str, Any] = {
+            "model": self.settings.yandex_model_uri,
+            "instructions": JUDGE_INSTRUCTIONS,
+            "input": build_judge_prompt(question, chunks, answer, language),
+            "temperature": self.settings.judge_temperature,
+            "top_p": 1.0,
+            "max_output_tokens": self.settings.judge_max_tokens,
+            "text": {"format": judge_response_format()},
+        }
+        headers = {
+            "Authorization": f"Api-Key {self.settings.yandex_api_key}",
+            "Content-Type": "application/json",
+        }
+
+        started = time.perf_counter()
+        client = self._client or httpx.Client(
+            timeout=self.settings.generation_timeout_seconds
+        )
+        should_close = self._client is None
+        data: dict[str, Any] | None = None
+        models = list(
+            dict.fromkeys(
+                [self.settings.yandex_model, *self.settings.yandex_fallback_models]
+            )
+        )
+        try:
+            last_error: httpx.HTTPStatusError | None = None
+            for model_index, model in enumerate(models):
+                payload["model"] = self.settings.model_uri(model)
+                response = client.post(
+                    self.settings.yandex_api_url,
+                    headers=headers,
+                    json=payload,
+                )
+                try:
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as error:
+                    last_error = error
+                    has_fallback = model_index < len(models) - 1
+                    if has_fallback and response.status_code in {400, 404}:
+                        continue
+                    status = response.status_code
+                    message = _safe_error_message(response)
+                    raise GenerationError(
+                        f"Yandex AI Studio judge returned HTTP {status}: {message}"
+                    ) from error
+                data = response.json()
+                break
+            if data is None and last_error is not None:
+                status = last_error.response.status_code
+                message = _safe_error_message(last_error.response)
+                raise GenerationError(
+                    f"No configured Yandex judge model is available (HTTP {status}): {message}"
+                ) from last_error
+        except (httpx.HTTPError, ValueError) as error:
+            raise GenerationError(f"Yandex AI Studio judge request failed: {error}") from error
+        finally:
+            if should_close:
+                client.close()
+
+        assert data is not None
+        _raise_yandex_error_if_present(data, "Yandex AI Studio judge")
+        raw_output = _extract_output_text(data)
+        parsed = parse_judge_answer(raw_output)
+        return GuardrailResult(
+            checked=True,
+            accepted=(
+                parsed.schema_valid
+                and parsed.verdict == "grounded"
+                and parsed.score >= self.settings.judge_min_score
+            ),
+            verdict=parsed.verdict,
+            score=parsed.score,
+            reason=parsed.reason,
+            corrected_answer=parsed.corrected_answer,
+            source=parsed.source,
+            elapsed_ms=(time.perf_counter() - started) * 1000,
+            parse_success=parsed.parse_success,
+            schema_valid=parsed.schema_valid,
+            parse_error=parsed.parse_error,
         )
 
 
@@ -208,6 +342,8 @@ class LocalOpenAICompatibleGenerator:
         language: str = "auto",
         strategy: PromptStrategy | str | None = None,
         temperature: float | None = None,
+        top_p: float | None = None,
+        max_output_tokens: int | None = None,
     ) -> GenerationResult:
         selected_strategy = PromptStrategy(strategy or self.settings.prompt_strategy)
         if selected_strategy is PromptStrategy.STRUCTURED_OUTPUT:
@@ -238,7 +374,12 @@ class LocalOpenAICompatibleGenerator:
                         if temperature is None
                         else temperature
                     ),
-                    "max_tokens": self.settings.generation_max_tokens,
+                    "top_p": self.settings.generation_top_p if top_p is None else top_p,
+                    "max_tokens": (
+                        self.settings.generation_max_tokens
+                        if max_output_tokens is None
+                        else max_output_tokens
+                    ),
                     "stream": False,
                 },
             )
@@ -283,6 +424,92 @@ class LocalOpenAICompatibleGenerator:
             schema_valid=parsed.schema_valid,
             parse_error=parsed.parse_error,
             raw_output=raw_output,
+        )
+
+    def judge_answer(
+        self,
+        question: str,
+        chunks: Sequence[RetrievedChunk],
+        answer: str,
+        language: str = "auto",
+    ) -> GuardrailResult:
+        client = self._client or httpx.Client(
+            timeout=self.settings.generation_timeout_seconds
+        )
+        should_close = self._client is None
+        started = time.perf_counter()
+        schema = judge_response_format()["schema"]
+        try:
+            model = self._resolved_model or self._resolve_model(client)
+            self._resolved_model = model
+            response = client.post(
+                f"{self.settings.local_llm_base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {self.settings.local_llm_api_key}"},
+                json={
+                    "model": model,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": (
+                                JUDGE_INSTRUCTIONS
+                                + "\nReturn only JSON matching this schema:\n"
+                                + str(schema)
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": build_judge_prompt(
+                                question,
+                                chunks,
+                                answer,
+                                language,
+                            ),
+                        },
+                    ],
+                    "temperature": self.settings.judge_temperature,
+                    "top_p": 1.0,
+                    "max_tokens": self.settings.judge_max_tokens,
+                    "stream": False,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+        except httpx.ConnectError as error:
+            raise GenerationError(
+                "Local LLM server is unavailable. Start the LM Studio server on port 1234."
+            ) from error
+        except httpx.HTTPStatusError as error:
+            raise GenerationError(
+                f"Local LLM judge returned HTTP {error.response.status_code}: "
+                f"{_safe_error_message(error.response)}"
+            ) from error
+        except (httpx.HTTPError, ValueError, KeyError, IndexError) as error:
+            raise GenerationError(f"Local LLM judge request failed: {error}") from error
+        finally:
+            if should_close:
+                client.close()
+
+        try:
+            raw_output = str(data["choices"][0]["message"]["content"]).strip()
+        except (KeyError, IndexError, TypeError) as error:
+            raise GenerationError("Local LLM judge returned no text") from error
+        parsed = parse_judge_answer(raw_output)
+        return GuardrailResult(
+            checked=True,
+            accepted=(
+                parsed.schema_valid
+                and parsed.verdict == "grounded"
+                and parsed.score >= self.settings.judge_min_score
+            ),
+            verdict=parsed.verdict,
+            score=parsed.score,
+            reason=parsed.reason,
+            corrected_answer=parsed.corrected_answer,
+            source=parsed.source,
+            elapsed_ms=(time.perf_counter() - started) * 1000,
+            parse_success=parsed.parse_success,
+            schema_valid=parsed.schema_valid,
+            parse_error=parsed.parse_error,
         )
 
     def _resolve_model(self, client: httpx.Client) -> str:
@@ -343,6 +570,20 @@ def _safe_error_message(response: httpx.Response) -> str:
     if "api key" in text.lower():
         return "API key was rejected"
     return text[:300]
+
+
+def _raise_yandex_error_if_present(data: dict[str, Any], label: str) -> None:
+    if data.get("status") != "failed" and not data.get("error"):
+        return
+    error = data.get("error")
+    if isinstance(error, dict):
+        message = error.get("message") or error.get("code") or "request rejected"
+    else:
+        message = error or "request rejected"
+    text = str(message)
+    if "api key" in text.lower():
+        text = "API key was rejected"
+    raise GenerationError(f"{label} returned an error: {text[:300]}")
 
 
 def _optional_int(value: Any) -> int | None:

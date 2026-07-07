@@ -44,6 +44,8 @@ def create_app(
         allow_origins=[
             "http://127.0.0.1:8501",
             "http://localhost:8501",
+            "http://127.0.0.1:7860",
+            "http://localhost:7860",
         ],
         allow_credentials=False,
         allow_methods=["GET", "POST"],
@@ -70,6 +72,14 @@ def create_app(
             llm_provider=application_settings.llm_provider,
             generation_model=application_settings.generation_model_name,
             prompt_strategy=application_settings.prompt_strategy,
+            generation_temperature=application_settings.generation_temperature,
+            generation_top_p=application_settings.generation_top_p,
+            top_k=application_settings.top_k,
+            context_window=application_settings.context_window,
+            context_intro_chunks=application_settings.context_intro_chunks,
+            max_context_chunks=application_settings.max_context_chunks,
+            judge_enabled=application_settings.enable_judge,
+            judge_min_score=application_settings.judge_min_score,
         )
 
     @app.post(
@@ -95,6 +105,10 @@ def create_app(
                 payload.question,
                 payload.top_k,
                 payload.language,
+                payload.temperature,
+                payload.top_p,
+                payload.max_output_tokens,
+                payload.use_judge,
             )
         except RetrieverError as error:
             raise HTTPException(status_code=503, detail=str(error)) from error

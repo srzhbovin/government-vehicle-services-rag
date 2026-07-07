@@ -9,6 +9,8 @@ sys.path.insert(0, str(SRC_DIR))
 
 from rag_pipeline.prompting import (  # noqa: E402
     PromptStrategy,
+    judge_response_format,
+    parse_judge_answer,
     parse_model_answer,
     prompt_spec,
 )
@@ -65,6 +67,33 @@ class PromptingTests(unittest.TestCase):
         self.assertEqual(
             set(spec.response_format["schema"]["required"]),
             {"answer", "confidence", "source"},
+        )
+
+    def test_judge_answer_is_validated(self):
+        parsed = parse_judge_answer(
+            json.dumps(
+                {
+                    "verdict": "partially_grounded",
+                    "score": 0.55,
+                    "reason": "The answer missed the general rule.",
+                    "corrected_answer": "Use the normal replacement process [1].",
+                    "source": "[1]",
+                }
+            )
+        )
+
+        self.assertTrue(parsed.schema_valid)
+        self.assertEqual(parsed.verdict, "partially_grounded")
+        self.assertEqual(parsed.corrected_answer, "Use the normal replacement process [1].")
+
+    def test_judge_schema_uses_strict_json_schema(self):
+        response_format = judge_response_format()
+
+        self.assertEqual(response_format["type"], "json_schema")
+        self.assertTrue(response_format["strict"])
+        self.assertEqual(
+            set(response_format["schema"]["required"]),
+            {"verdict", "score", "reason", "corrected_answer", "source"},
         )
 
 
