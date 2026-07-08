@@ -78,6 +78,11 @@ def create_app(
             context_window=application_settings.context_window,
             context_intro_chunks=application_settings.context_intro_chunks,
             max_context_chunks=application_settings.max_context_chunks,
+            adaptive_context_enabled=application_settings.enable_adaptive_context,
+            adaptive_top_k=application_settings.adaptive_top_k,
+            adaptive_context_window=application_settings.adaptive_context_window,
+            adaptive_context_intro_chunks=application_settings.adaptive_context_intro_chunks,
+            adaptive_max_context_chunks=application_settings.adaptive_max_context_chunks,
             judge_enabled=application_settings.enable_judge,
             judge_min_score=application_settings.judge_min_score,
         )
@@ -93,6 +98,9 @@ def create_app(
                 _service(request).retrieve,
                 payload.question,
                 payload.top_k,
+                payload.context_window,
+                payload.intro_chunks,
+                payload.max_context_chunks,
             )
         except RetrieverError as error:
             raise HTTPException(status_code=503, detail=str(error)) from error
@@ -109,6 +117,10 @@ def create_app(
                 payload.top_p,
                 payload.max_output_tokens,
                 payload.use_judge,
+                payload.context_window,
+                payload.intro_chunks,
+                payload.max_context_chunks,
+                payload.use_adaptive_context,
             )
         except RetrieverError as error:
             raise HTTPException(status_code=503, detail=str(error)) from error

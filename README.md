@@ -14,7 +14,7 @@
 6. BM25-поиск.
 7. Гибридный поиск BM25 + FAISS через weighted RRF.
 8. Cross-encoder reranker `cross-encoder/ms-marco-MiniLM-L2-v2`.
-9. Расширение контекста: к найденным чанкам добавляются начальные и соседние чанки того же документа.
+9. Формирование контекста после retrieval: можно настраивать `top_k`, `context_window`, `intro_chunks` и `max_context_chunks`.
 10. Генерация ответа через YandexGPT.
 11. Structured Output: модель возвращает структурированный объект `answer`, `confidence`, `source`.
 12. Проверка ответа через LLM-as-a-judge.
@@ -22,6 +22,21 @@
 14. Gradio показывает ответ, параметры, judge-вердикт и найденные фрагменты.
 
 ## Что изменено в последней итерации
+
+### 0. Исследование стратегий формирования контекста
+
+Добавлен отдельный эксперимент для шага 13. Теперь можно сравнивать, сколько чанков брать после retrieval и нужно ли добавлять соседние/начальные чанки документа.
+
+По результатам проверки текущий дефолт изменён на более компактный:
+
+```env
+RAG_TOP_K=3
+RAG_CONTEXT_WINDOW=0
+RAG_CONTEXT_INTRO_CHUNKS=0
+RAG_MAX_CONTEXT_CHUNKS=6
+```
+
+Расширение контекста осталось доступным через API и Gradio. Дополнительно включён адаптивный fallback: если LLM-as-a-judge не принимает первый компактный ответ, система делает второй проход с более широким контекстом.
 
 ### 1. Защита от галлюцинаций
 
@@ -46,6 +61,9 @@ Judge возвращает:
 В API и интерфейс добавлены параметры:
 
 - `top_k` — сколько основных retrieval-кандидатов брать;
+- `context_window` — сколько соседних чанков добавлять вокруг найденного чанка;
+- `intro_chunks` — сколько первых чанков документа добавлять в контекст;
+- `max_context_chunks` — максимальный размер контекста в чанках перед отправкой в LLM;
 - `temperature` — насколько свободно модель формулирует ответ;
 - `top_p` — nucleus sampling;
 - `max_output_tokens` — лимит длины ответа;
@@ -77,7 +95,7 @@ Streamlit-интерфейс заменён на Gradio. В интерфейсе
 
 - задать вопрос;
 - выбрать язык ответа;
-- менять `top_k`, `temperature`, `top_p`, `max_output_tokens`;
+- менять `top_k`, `context_window`, `intro_chunks`, `max_context_chunks`, `temperature`, `top_p`, `max_output_tokens`;
 - включать/выключать judge;
 - видеть итоговый ответ;
 - видеть judge verdict, score и причину;
@@ -157,11 +175,15 @@ Invoke-RestMethod http://127.0.0.1:8000/health
 $body = @{
   question = "What should I do if I lost my driver license?"
   language = "en"
-  top_k = 6
+  top_k = 3
+  context_window = 0
+  intro_chunks = 0
+  max_context_chunks = 6
   temperature = 0.1
   top_p = 0.9
   max_output_tokens = 700
   use_judge = $true
+  use_adaptive_context = $true
 } | ConvertTo-Json
 
 Invoke-RestMethod `
@@ -170,6 +192,29 @@ Invoke-RestMethod `
   -ContentType "application/json" `
   -Body $body
 ```
+
+## Запуск эксперимента по стратегиям контекста
+
+Шаг 13 можно воспроизвести отдельной командой:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_context_strategy_experiment.ps1
+```
+
+Скрипт сравнивает сетку параметров:
+
+- `top_k`: 3, 5, 7, 10;
+- `intro_chunks`: 0, 1, 2, 3, 5;
+- `context_window`: 0, 1, 2;
+- `max_context_chunks`: 6, 8, 10, 12, 16.
+
+Результаты сохраняются в:
+
+- `reports/context_strategy_comparison.md`;
+- `data/experiments/context_strategies/context_strategy_summary.csv`;
+- `data/experiments/context_strategies/context_generation_summary.csv`;
+- `data/experiments/context_strategies/context_strategy_details.jsonl`;
+- `data/experiments/context_strategies/context_generation_results.jsonl`.
 
 ## Основные настройки `.env`
 
@@ -181,15 +226,20 @@ YANDEX_TEMPERATURE=0.1
 YANDEX_TOP_P=0.9
 YANDEX_MAX_OUTPUT_TOKENS=700
 
-RAG_TOP_K=6
+RAG_TOP_K=3
 RAG_CANDIDATE_K=60
 RAG_RERANKER_CANDIDATE_K=20
 RAG_BM25_WEIGHT=0.5
 RAG_RRF_K=60
 
-RAG_CONTEXT_WINDOW=1
-RAG_CONTEXT_INTRO_CHUNKS=3
-RAG_MAX_CONTEXT_CHUNKS=12
+RAG_CONTEXT_WINDOW=0
+RAG_CONTEXT_INTRO_CHUNKS=0
+RAG_MAX_CONTEXT_CHUNKS=6
+RAG_ENABLE_ADAPTIVE_CONTEXT=true
+RAG_ADAPTIVE_TOP_K=5
+RAG_ADAPTIVE_CONTEXT_WINDOW=1
+RAG_ADAPTIVE_CONTEXT_INTRO_CHUNKS=1
+RAG_ADAPTIVE_MAX_CONTEXT_CHUNKS=8
 RAG_USE_QUERY_EXPANSION=true
 
 RAG_ENABLE_JUDGE=true
@@ -253,11 +303,60 @@ Context expansion отдельно не стоит сравнивать с об�
 
 Ручная проверка проблемного вопроса `What should I do if I lost my driver license?` теперь проходит лучше: система поднимает документ `Replace license or permit`, отвечает про online/by mail/office и fee `$17.50`, а judge помечает ответ как `grounded`.
 
+### Context strategy experiment
+
+На этом шаге проверялись параметры формирования контекста уже после retrieval:
+
+- `top_k` — сколько основных чанков берём после reranker;
+- `context_window` — сколько соседних чанков добавляем вокруг найденного;
+- `intro_chunks` — сколько первых чанков документа добавляем как вводную часть;
+- `max_context_chunks` — сколько чанков максимум отдаём в LLM.
+
+Сначала была прогнана широкая сетка из 255 корректных комбинаций на 20 диагностических вопросах без LLM-вызовов. Потом несколько ключевых конфигураций были проверены уже с генерацией ответа через YandexGPT.
+
+Лучшие результаты по LLM-проверке:
+
+| config | generation score | required answer coverage | avg token F1 | context chunks |
+|---|---:|---:|---:|---:|
+| `top_k=3, intro=0, window=0, max=6` | `0.8983` | `1.00` | `0.5200` | `3` |
+| `top_k=10, intro=5, window=2, max=16` | `0.8154` | `0.80` | `0.4772` | `16` |
+| `top_k=7, intro=3, window=1, max=12` | `0.8111` | `0.80` | `0.5053` | `12` |
+| `top_k=5, intro=3, window=1, max=12` | `0.8110` | `0.80` | `0.5050` | `12` |
+| `top_k=5, intro=2, window=1, max=6` | `0.7702` | `0.60` | `0.4933` | `6` |
+
+Вывод: для текущего корпуса и текущего retriever лучшим дефолтом стал компактный контекст:
+
+```env
+RAG_TOP_K=3
+RAG_CONTEXT_WINDOW=0
+RAG_CONTEXT_INTRO_CHUNKS=0
+RAG_MAX_CONTEXT_CHUNKS=6
+```
+
+Причина довольно практичная: после BM25 + FAISS + reranker верхние чанки уже достаточно точные, а добавление соседних и вводных чанков часто приносит шум. Широкий режим `top_k=10, intro=5, window=2, max=16` даёт в среднем 16 чанков и примерно 1866 слов контекста. В нём полезная информация не исчезает полностью, но модель чаще видит лишние условия и начинает хуже выделять главный ответ.
+
+Это не значит, что `context_window` и `intro_chunks` бесполезны. Они оставлены в API и Gradio, потому что дальше можно сделать адаптивный режим: по умолчанию держать контекст компактным, а расширять его только если retriever/Judge видит недостаток информации.
+
+Такой адаптивный режим теперь включён:
+
+```env
+RAG_ENABLE_ADAPTIVE_CONTEXT=true
+RAG_ADAPTIVE_TOP_K=5
+RAG_ADAPTIVE_CONTEXT_WINDOW=1
+RAG_ADAPTIVE_CONTEXT_INTRO_CHUNKS=1
+RAG_ADAPTIVE_MAX_CONTEXT_CHUNKS=8
+```
+
+Логика такая: первый ответ строится на компактном контексте. Если LLM-as-a-judge принимает ответ, ничего больше не происходит. Если judge отклоняет ответ как недостаточно grounded, система делает второй проход с более широким контекстом и использует его только если повторная проверка стала успешной или judge смог вернуть исправленный grounded-ответ.
+
+Подробный отчёт сохранён в `reports/context_strategy_comparison.md`.
+
 ## Текущие ограничения
 
 - Judge повышает надёжность, но добавляет второй LLM-вызов и увеличивает задержку.
+- Adaptive context retry улучшает устойчивость на спорных запросах, но если первый ответ отклонён judge, запрос становится дороже и медленнее: появляется дополнительная генерация и повторная проверка.
 - `confidence` от генератора пока нельзя считать строгой вероятностью правильности.
-- Context expansion улучшает полноту ответа, но может ухудшать классические retrieval-метрики из-за повторов одного документа.
+- Слишком широкий контекст может ухудшать ответ: LLM получает больше текста, но доля действительно полезных чанков падает.
 - Query expansion пока простой и rule-based. Это лучше, чем ничего, но дальше его стоит заменить на отдельный query rewriting шаг.
 - Корпус документов английский, поэтому русские вопросы потенциально стоит переводить/нормализовать перед retrieval.
 

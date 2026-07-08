@@ -1,0 +1,58 @@
+{
+  "generated_at": "2026-07-08T14:37:12.212149+00:00",
+  "questions": 20,
+  "configs": 255,
+  "run_generation": true,
+  "generation_questions": 8,
+  "selection_rule": "context_hit_rate, required_term_coverage, gold_chunk_share, compactness",
+  "best_context_config": {
+    "config": "top_k=3; intro=0; window=0; max=6",
+    "top_k": 3,
+    "intro_chunks": 0,
+    "context_window": 0,
+    "max_context_chunks": 6,
+    "questions": 20,
+    "avg_context_chunks": 3.0,
+    "avg_context_words": 344.05,
+    "avg_unique_documents": 2.0,
+    "first_chunk_gold_rate": 0.65,
+    "context_hit_rate": 0.95,
+    "gold_chunk_share": 0.566667,
+    "avg_non_gold_chunks": 1.3,
+    "required_term_coverage": 1.0,
+    "avg_retrieval_ms": 294.743,
+    "selection_score": 0.758766
+  },
+  "generation_configs": [
+    {
+      "top_k": 3,
+      "intro_chunks": 0,
+      "context_window": 0,
+      "max_context_chunks": 6
+    },
+    {
+      "top_k": 5,
+      "intro_chunks": 2,
+      "context_window": 1,
+      "max_context_chunks": 6
+    },
+    {
+      "top_k": 5,
+      "intro_chunks": 3,
+      "context_window": 1,
+      "max_context_chunks": 12
+    },
+    {
+      "top_k": 7,
+      "intro_chunks": 3,
+      "context_window": 1,
+      "max_context_chunks": 12
+    },
+    {
+      "top_k": 10,
+      "intro_chunks": 5,
+      "context_window": 2,
+      "max_context_chunks": 16
+    }
+  ]
+}

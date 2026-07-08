@@ -62,6 +62,11 @@ class Settings:
     context_window: int
     context_intro_chunks: int
     max_context_chunks: int
+    enable_adaptive_context: bool
+    adaptive_top_k: int
+    adaptive_context_window: int
+    adaptive_context_intro_chunks: int
+    adaptive_max_context_chunks: int
     use_query_expansion: bool
     rrf_k: int
     bm25_weight: float
@@ -126,21 +131,45 @@ class Settings:
                 20,
                 "RAG_RERANKER_CANDIDATE_K",
             ),
-            top_k=_as_int(os.getenv("RAG_TOP_K"), 6, "RAG_TOP_K"),
+            top_k=_as_int(os.getenv("RAG_TOP_K"), 3, "RAG_TOP_K"),
             context_window=_as_int(
                 os.getenv("RAG_CONTEXT_WINDOW"),
-                1,
+                0,
                 "RAG_CONTEXT_WINDOW",
             ),
             context_intro_chunks=_as_int(
                 os.getenv("RAG_CONTEXT_INTRO_CHUNKS"),
-                3,
+                0,
                 "RAG_CONTEXT_INTRO_CHUNKS",
             ),
             max_context_chunks=_as_int(
                 os.getenv("RAG_MAX_CONTEXT_CHUNKS"),
-                12,
+                6,
                 "RAG_MAX_CONTEXT_CHUNKS",
+            ),
+            enable_adaptive_context=_as_bool(
+                os.getenv("RAG_ENABLE_ADAPTIVE_CONTEXT"),
+                True,
+            ),
+            adaptive_top_k=_as_int(
+                os.getenv("RAG_ADAPTIVE_TOP_K"),
+                5,
+                "RAG_ADAPTIVE_TOP_K",
+            ),
+            adaptive_context_window=_as_int(
+                os.getenv("RAG_ADAPTIVE_CONTEXT_WINDOW"),
+                1,
+                "RAG_ADAPTIVE_CONTEXT_WINDOW",
+            ),
+            adaptive_context_intro_chunks=_as_int(
+                os.getenv("RAG_ADAPTIVE_CONTEXT_INTRO_CHUNKS"),
+                1,
+                "RAG_ADAPTIVE_CONTEXT_INTRO_CHUNKS",
+            ),
+            adaptive_max_context_chunks=_as_int(
+                os.getenv("RAG_ADAPTIVE_MAX_CONTEXT_CHUNKS"),
+                8,
+                "RAG_ADAPTIVE_MAX_CONTEXT_CHUNKS",
             ),
             use_query_expansion=_as_bool(os.getenv("RAG_USE_QUERY_EXPANSION"), True),
             rrf_k=_as_int(os.getenv("RAG_RRF_K"), 60, "RAG_RRF_K"),
@@ -275,6 +304,16 @@ class Settings:
             raise SettingsError("RAG_CONTEXT_INTRO_CHUNKS cannot be negative")
         if self.max_context_chunks < self.top_k:
             raise SettingsError("RAG_MAX_CONTEXT_CHUNKS must be greater than or equal to RAG_TOP_K")
+        if not 1 <= self.adaptive_top_k <= self.reranker_candidate_k:
+            raise SettingsError("Expected RAG_ADAPTIVE_TOP_K <= RAG_RERANKER_CANDIDATE_K")
+        if self.adaptive_context_window < 0:
+            raise SettingsError("RAG_ADAPTIVE_CONTEXT_WINDOW cannot be negative")
+        if self.adaptive_context_intro_chunks < 0:
+            raise SettingsError("RAG_ADAPTIVE_CONTEXT_INTRO_CHUNKS cannot be negative")
+        if self.adaptive_max_context_chunks < self.adaptive_top_k:
+            raise SettingsError(
+                "RAG_ADAPTIVE_MAX_CONTEXT_CHUNKS must be greater than or equal to RAG_ADAPTIVE_TOP_K"
+            )
         if not 0 <= self.bm25_weight <= 1:
             raise SettingsError("RAG_BM25_WEIGHT must be between 0 and 1")
         if not 0 <= self.generation_temperature <= 1:

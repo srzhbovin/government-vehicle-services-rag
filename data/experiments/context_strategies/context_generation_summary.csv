@@ -1,0 +1,6 @@
+﻿config,top_k,intro_chunks,context_window,max_context_chunks,questions,schema_valid_rate,context_hit_rate,avg_token_f1,required_answer_coverage,citation_valid_rate,avg_context_chunks,avg_context_words,avg_generation_ms,generation_score
+top_k=3; intro=0; window=0; max=6,3,0,0,6,9,1.0,1.0,0.519995,1.0,1.0,3.0,341.0,2943.795,0.898316
+top_k=10; intro=5; window=2; max=16,10,5,2,16,9,1.0,1.0,0.477212,0.8,1.0,16.0,1865.778,4184.968,0.815442
+top_k=7; intro=3; window=1; max=12,7,3,1,12,9,1.0,0.888889,0.505348,0.8,1.0,12.0,1398.778,3503.707,0.81109
+top_k=5; intro=3; window=1; max=12,5,3,1,12,9,1.0,0.888889,0.504973,0.8,1.0,12.0,1398.778,3753.587,0.811015
+top_k=5; intro=2; window=1; max=6,5,2,1,6,9,1.0,0.888889,0.493335,0.6,1.0,6.0,710.556,3178.649,0.770158

@@ -185,7 +185,14 @@ class HybridRetriever:
             )
         self._ready = True
 
-    def retrieve(self, query: str, top_k: int | None = None) -> RetrievalResult:
+    def retrieve(
+        self,
+        query: str,
+        top_k: int | None = None,
+        context_window: int | None = None,
+        intro_chunks: int | None = None,
+        max_context_chunks: int | None = None,
+    ) -> RetrievalResult:
         if not self._ready:
             self.initialize()
         assert self.bm25 is not None
@@ -193,6 +200,27 @@ class HybridRetriever:
         requested_k = top_k or self.settings.top_k
         if not 1 <= requested_k <= 10:
             raise RetrieverError("top_k must be between 1 and 10")
+        selected_window = (
+            self.settings.context_window
+            if context_window is None
+            else context_window
+        )
+        selected_intro = (
+            self.settings.context_intro_chunks
+            if intro_chunks is None
+            else intro_chunks
+        )
+        selected_max_context = (
+            self.settings.max_context_chunks
+            if max_context_chunks is None
+            else max_context_chunks
+        )
+        if selected_window < 0:
+            raise RetrieverError("context_window cannot be negative")
+        if selected_intro < 0:
+            raise RetrieverError("intro_chunks cannot be negative")
+        if selected_max_context < requested_k:
+            raise RetrieverError("max_context_chunks must be greater than or equal to top_k")
         candidate_k = min(self.settings.candidate_k, len(self.chunks))
 
         started = time.perf_counter()
@@ -234,7 +262,13 @@ class HybridRetriever:
                     top_k=max(requested_k, self.settings.top_k),
                     batch_size=self.settings.reranker_candidate_k,
                 )[0]
-            ranking = self._expand_context(ranking, requested_k)
+            ranking = self._expand_context(
+                ranking,
+                requested_k,
+                context_window=selected_window,
+                intro_chunks=selected_intro,
+                max_context_chunks=selected_max_context,
+            )
 
         elapsed_ms = (time.perf_counter() - started) * 1000
         output = []
@@ -261,12 +295,16 @@ class HybridRetriever:
         self,
         ranking: list[RankedItem],
         requested_k: int,
+        *,
+        context_window: int,
+        intro_chunks: int,
+        max_context_chunks: int,
     ) -> list[RankedItem]:
         if not ranking:
             return []
-        if self.settings.context_window == 0 and self.settings.context_intro_chunks == 0:
+        if context_window == 0 and intro_chunks == 0:
             return ranking[:requested_k]
-        limit = max(requested_k, self.settings.max_context_chunks)
+        limit = max(requested_k, max_context_chunks)
 
         by_document: dict[str, list[int]] = {}
         for global_index, chunk in enumerate(self.chunks):
@@ -290,12 +328,12 @@ class HybridRetriever:
             local_index = int(chunk.get("chunk_index") or 0)
             document_indices = by_document.get(document_id, [])
 
-            intro_indices = document_indices[: self.settings.context_intro_chunks]
+            intro_indices = document_indices[:intro_chunks]
             neighbor_indices = [
                 index
                 for index in document_indices
                 if abs(int(self.chunks[index].get("chunk_index") or 0) - local_index)
-                <= self.settings.context_window
+                <= context_window
             ]
             context_indices = sorted(
                 {*intro_indices, *neighbor_indices, item.chunk_index},

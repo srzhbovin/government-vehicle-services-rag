@@ -42,6 +42,9 @@ def format_status() -> str:
         f"- default top-k: `{health['top_k']}`\n"
         f"- context expansion: intro `{health['context_intro_chunks']}`, "
         f"window `{health['context_window']}`, max `{health['max_context_chunks']}`\n"
+        f"- adaptive context: `{health['adaptive_context_enabled']}` "
+        f"-> top-k `{health['adaptive_top_k']}`, intro `{health['adaptive_context_intro_chunks']}`, "
+        f"window `{health['adaptive_context_window']}`, max `{health['adaptive_max_context_chunks']}`\n"
         f"- generation: temperature `{health['generation_temperature']}`, "
         f"top-p `{health['generation_top_p']}`\n"
         f"- LLM judge: `{health['judge_enabled']}`, min score `{health['judge_min_score']}`"
@@ -52,10 +55,14 @@ def ask_backend(
     question: str,
     language_label: str,
     top_k: int,
+    context_window: int,
+    intro_chunks: int,
+    max_context_chunks: int,
     temperature: float,
     top_p: float,
     max_output_tokens: int,
     use_judge: bool,
+    use_adaptive_context: bool,
 ) -> tuple[str, str, str, list[list[Any]], str]:
     question = question.strip()
     if not question:
@@ -70,10 +77,14 @@ def ask_backend(
         "question": question,
         "language": language,
         "top_k": int(top_k),
+        "context_window": int(context_window),
+        "intro_chunks": int(intro_chunks),
+        "max_context_chunks": int(max_context_chunks),
         "temperature": float(temperature),
         "top_p": float(top_p),
         "max_output_tokens": int(max_output_tokens),
         "use_judge": bool(use_judge),
+        "use_adaptive_context": bool(use_adaptive_context),
     }
 
     try:
@@ -100,14 +111,26 @@ def ask_backend(
     return answer, meta, guardrail, sources, format_status()
 
 
-def retrieve_backend(question: str, top_k: int) -> tuple[list[list[Any]], str]:
+def retrieve_backend(
+    question: str,
+    top_k: int,
+    context_window: int,
+    intro_chunks: int,
+    max_context_chunks: int,
+) -> tuple[list[list[Any]], str]:
     question = question.strip()
     if not question:
         return [], "Введите вопрос."
     try:
         response = httpx.post(
             f"{BACKEND_URL}/api/v1/retrieve",
-            json={"question": question, "top_k": int(top_k)},
+            json={
+                "question": question,
+                "top_k": int(top_k),
+                "context_window": int(context_window),
+                "intro_chunks": int(intro_chunks),
+                "max_context_chunks": int(max_context_chunks),
+            },
             timeout=REQUEST_TIMEOUT,
         )
         response.raise_for_status()
@@ -126,6 +149,9 @@ def format_metadata(result: dict[str, Any]) -> str:
         f"Prompt: `{result['prompt_strategy']}`",
         f"Language: `{result['answer_language']}`",
         f"top-k: `{result['top_k']}`",
+        f"context window: `{result['context_window']}`",
+        f"intro chunks: `{result['intro_chunks']}`",
+        f"max context chunks: `{result['max_context_chunks']}`",
         f"temperature: `{result['generation_temperature']}`",
         f"top-p: `{result['generation_top_p']}`",
         f"Retrieval time: `{timings['retrieval_ms']:.0f} ms`",
@@ -140,6 +166,20 @@ def format_metadata(result: dict[str, Any]) -> str:
         lines.append(f"Model sources: `{result['source']}`")
     if usage.get("total_tokens") is not None:
         lines.append(f"Tokens: `{usage['total_tokens']}`")
+    adaptive = result.get("adaptive_context") or {}
+    if adaptive:
+        lines.append(f"Adaptive context enabled: `{adaptive.get('enabled')}`")
+        lines.append(f"Adaptive context triggered: `{adaptive.get('triggered')}`")
+        lines.append(f"Used retry answer: `{adaptive.get('used_retry_answer')}`")
+        retry = adaptive.get("retry")
+        if retry:
+            lines.append(
+                "Retry context: "
+                f"`top_k={retry['top_k']}, intro={retry['intro_chunks']}, "
+                f"window={retry['context_window']}, max={retry['max_context_chunks']}`"
+            )
+        if adaptive.get("reason"):
+            lines.append(f"Adaptive reason: {adaptive['reason']}")
     return "\n".join(f"- {line}" for line in lines)
 
 
@@ -232,8 +272,29 @@ with gr.Blocks(title="DMV RAG Assistant", theme=gr.themes.Soft()) as demo:
                 minimum=1,
                 maximum=10,
                 step=1,
-                value=6,
+                value=3,
                 label="top-k retrieval hits",
+            )
+            context_window_slider = gr.Slider(
+                minimum=0,
+                maximum=3,
+                step=1,
+                value=0,
+                label="context_window",
+            )
+            intro_chunks_slider = gr.Slider(
+                minimum=0,
+                maximum=5,
+                step=1,
+                value=0,
+                label="intro_chunks",
+            )
+            max_context_chunks_slider = gr.Slider(
+                minimum=3,
+                maximum=20,
+                step=1,
+                value=6,
+                label="max_context_chunks",
             )
             temperature_slider = gr.Slider(
                 minimum=0.0,
@@ -260,6 +321,10 @@ with gr.Blocks(title="DMV RAG Assistant", theme=gr.themes.Soft()) as demo:
                 value=True,
                 label="Проверять ответ через LLM-as-a-judge",
             )
+            adaptive_context_checkbox = gr.Checkbox(
+                value=True,
+                label="Адаптивно расширять контекст, если judge не принял ответ",
+            )
 
     answer_box = gr.Markdown(label="Ответ")
 
@@ -282,10 +347,14 @@ with gr.Blocks(title="DMV RAG Assistant", theme=gr.themes.Soft()) as demo:
             question_box,
             language_box,
             top_k_slider,
+            context_window_slider,
+            intro_chunks_slider,
+            max_context_chunks_slider,
             temperature_slider,
             top_p_slider,
             max_tokens_slider,
             judge_checkbox,
+            adaptive_context_checkbox,
         ],
         outputs=[
             answer_box,
@@ -297,7 +366,13 @@ with gr.Blocks(title="DMV RAG Assistant", theme=gr.themes.Soft()) as demo:
     )
     retrieve_button.click(
         retrieve_backend,
-        inputs=[question_box, top_k_slider],
+        inputs=[
+            question_box,
+            top_k_slider,
+            context_window_slider,
+            intro_chunks_slider,
+            max_context_chunks_slider,
+        ],
         outputs=[sources_table, retrieval_status_box],
     )
     refresh_button.click(format_status, outputs=status_box)
