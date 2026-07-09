@@ -67,6 +67,9 @@ class Settings:
     adaptive_context_window: int
     adaptive_context_intro_chunks: int
     adaptive_max_context_chunks: int
+    enable_refusal_gate: bool
+    refusal_min_top_score: float
+    refusal_min_lexical_overlap: float
     use_query_expansion: bool
     rrf_k: int
     bm25_weight: float
@@ -171,6 +174,17 @@ class Settings:
                 8,
                 "RAG_ADAPTIVE_MAX_CONTEXT_CHUNKS",
             ),
+            enable_refusal_gate=_as_bool(os.getenv("RAG_ENABLE_REFUSAL_GATE"), True),
+            refusal_min_top_score=_as_float(
+                os.getenv("RAG_REFUSAL_MIN_TOP_SCORE"),
+                -2.0,
+                "RAG_REFUSAL_MIN_TOP_SCORE",
+            ),
+            refusal_min_lexical_overlap=_as_float(
+                os.getenv("RAG_REFUSAL_MIN_LEXICAL_OVERLAP"),
+                0.0,
+                "RAG_REFUSAL_MIN_LEXICAL_OVERLAP",
+            ),
             use_query_expansion=_as_bool(os.getenv("RAG_USE_QUERY_EXPANSION"), True),
             rrf_k=_as_int(os.getenv("RAG_RRF_K"), 60, "RAG_RRF_K"),
             bm25_weight=_as_float(
@@ -195,12 +209,12 @@ class Settings:
                 or os.getenv("YANDEX_CLOUD_FOLDER")
                 or None
             ),
-            yandex_model=os.getenv("YANDEX_GPT_MODEL", "yandexgpt-5-lite"),
+            yandex_model=os.getenv("YANDEX_GPT_MODEL", "qwen3.6-35b-a3b"),
             yandex_fallback_models=tuple(
                 model.strip()
                 for model in os.getenv(
                     "YANDEX_GPT_FALLBACK_MODELS",
-                    "yandexgpt-5.1,yandexgpt-5-pro",
+                    "yandexgpt-5-lite,yandexgpt-5.1,yandexgpt-5-pro",
                 ).split(",")
                 if model.strip()
             ),
@@ -314,6 +328,8 @@ class Settings:
             raise SettingsError(
                 "RAG_ADAPTIVE_MAX_CONTEXT_CHUNKS must be greater than or equal to RAG_ADAPTIVE_TOP_K"
             )
+        if not 0 <= self.refusal_min_lexical_overlap <= 1:
+            raise SettingsError("RAG_REFUSAL_MIN_LEXICAL_OVERLAP must be between 0 and 1")
         if not 0 <= self.bm25_weight <= 1:
             raise SettingsError("RAG_BM25_WEIGHT must be between 0 and 1")
         if not 0 <= self.generation_temperature <= 1:

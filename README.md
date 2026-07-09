@@ -38,6 +38,18 @@ RAG_MAX_CONTEXT_CHUNKS=6
 
 Расширение контекста осталось доступным через API и Gradio. Дополнительно включён адаптивный fallback: если LLM-as-a-judge не принимает первый компактный ответ, система делает второй проход с более широким контекстом.
 
+### 0.1. Сравнение языковых моделей
+
+Добавлен эксперимент для шага 14: сравнение YandexGPT и open-source моделей из Yandex AI Studio на одинаковых retrieval-контекстах. По текущей проверке в runtime выбрана `qwen3.6-35b-a3b`.
+
+### 0.2. Отказ от ответа
+
+Добавлен refusal gate для шага 15. Если найденные документы слишком слабо связаны с вопросом, генерация не запускается, а система отвечает, что в DMV-документах недостаточно информации.
+
+### 0.3. Chat RAG
+
+Добавлен endpoint `/api/v1/chat` и диалоговый режим в Gradio. Система учитывает историю сообщений и восстанавливает контекст коротких follow-up вопросов.
+
 ### 1. Защита от галлюцинаций
 
 Добавлен LLM-as-a-judge. После генерации ответа система делает отдельную проверку: действительно ли ответ следует из найденных фрагментов.
@@ -99,7 +111,9 @@ Streamlit-интерфейс заменён на Gradio. В интерфейсе
 - включать/выключать judge;
 - видеть итоговый ответ;
 - видеть judge verdict, score и причину;
-- смотреть найденные фрагменты документов.
+- смотреть найденные фрагменты документов;
+- раскрывать карточки источников ответа с `document_id`, `chunk_id`, score и текстом чанка;
+- использовать отдельный блок Chat RAG: ответы в чате дополняются источниками, а подробные фрагменты выводятся ниже в раскрывающихся карточках.
 
 ## Быстрый запуск
 
@@ -240,6 +254,9 @@ RAG_ADAPTIVE_TOP_K=5
 RAG_ADAPTIVE_CONTEXT_WINDOW=1
 RAG_ADAPTIVE_CONTEXT_INTRO_CHUNKS=1
 RAG_ADAPTIVE_MAX_CONTEXT_CHUNKS=8
+RAG_ENABLE_REFUSAL_GATE=true
+RAG_REFUSAL_MIN_TOP_SCORE=-2.0
+RAG_REFUSAL_MIN_LEXICAL_OVERLAP=0.0
 RAG_USE_QUERY_EXPANSION=true
 
 RAG_ENABLE_JUDGE=true
@@ -351,19 +368,138 @@ RAG_ADAPTIVE_MAX_CONTEXT_CHUNKS=8
 
 Подробный отчёт сохранён в `reports/context_strategy_comparison.md`.
 
+### LLM model comparison
+
+Для шага 14 сравнивались модели, доступные через текущий Yandex AI Studio Responses API:
+
+- `yandexgpt-5-lite`;
+- `yandexgpt-5-pro`;
+- `yandexgpt-5.1`.
+- `qwen3.6-35b-a3b`;
+- `qwen3-235b-a22b-fp8`;
+- `gpt-oss-20b`;
+- `gpt-oss-120b`;
+- `deepseek-v4-flash`.
+
+Важно: retrieval, найденные чанки, structured output, temperature и остальные параметры были одинаковыми. Менялась только языковая модель.
+
+Результат на 8 диагностических вопросах:
+
+| Модель | Score | Correct | Semantic | Token F1 | Schema | Citations | Avg ms |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `qwen3.6-35b-a3b` | `0.848` | `100%` | `0.851` | `0.603` | `100%` | `100%` | `2691` |
+| `yandexgpt-5-lite` | `0.840` | `100%` | `0.829` | `0.525` | `100%` | `100%` | `3059` |
+| `deepseek-v4-flash` | `0.763` | `75%` | `0.821` | `0.559` | `100%` | `100%` | `3176` |
+| `yandexgpt-5-pro` | `0.745` | `75%` | `0.826` | `0.510` | `100%` | `100%` | `5424` |
+| `yandexgpt-5.1` | `0.745` | `75%` | `0.786` | `0.499` | `100%` | `100%` | `4500` |
+| `gpt-oss-120b` | `0.743` | `75%` | `0.725` | `0.342` | `100%` | `100%` | `3201` |
+| `gpt-oss-20b` | `0.696` | `75%` | `0.749` | `0.439` | `87.5%` | `87.5%` | `3440` |
+| `qwen3-235b-a22b-fp8` | `0.670` | `75%` | `0.698` | `0.387` | `87.5%` | `87.5%` | `5408` |
+
+Для текущего пайплайна выбрана `qwen3.6-35b-a3b`: на этом наборе она дала лучший score, лучший token F1 и была быстрее `yandexgpt-5-lite`. `yandexgpt-5-lite` оставлен fallback-моделью.
+
+Запуск эксперимента:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_llm_model_comparison.ps1
+```
+
+Подробный отчёт сохранён в `reports/llm_model_comparison.md`.
+
+### Refusal mechanisms
+
+Для шага 15 добавлен механизм отказа от ответа, если в найденных документах недостаточно информации. Это нужно для вопросов вне корпуса: например про погоду, кулинарию, программирование или другие госуслуги не из DMV.
+
+Исследовались подходы:
+
+- threshold по score после reranker;
+- threshold по lexical overlap;
+- hybrid score + lexical overlap;
+- DistilBERT-подобный подход через маленький cross-encoder reranker `cross-encoder/ms-marco-MiniLM-L2-v2`.
+
+На диагностическом наборе из 20 DMV-вопросов и 20 внешних вопросов лучший строгий порог по balanced score был около `top_score >= -0.5`, но для runtime выбран более осторожный к нормальным DMV-вопросам порог:
+
+```env
+RAG_ENABLE_REFUSAL_GATE=true
+RAG_REFUSAL_MIN_TOP_SCORE=-2.0
+RAG_REFUSAL_MIN_LEXICAL_OVERLAP=0.0
+```
+
+Почему не максимально строгий порог: лучше пропустить один спорный вопрос дальше к LLM-as-a-judge, чем ошибочно отказать пользователю на вопрос, который всё-таки относится к DMV-документам.
+
+При отказе генерация не запускается. API возвращает обычный ответ со специальным блоком:
+
+```json
+{
+  "refusal": {
+    "enabled": true,
+    "refused": true,
+    "strategy": "reranker_score_and_lexical_overlap",
+    "reason": "top retrieval score -10.901 is below threshold -2.000"
+  }
+}
+```
+
+Запуск эксперимента:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_refusal_experiment.ps1
+```
+
+Подробный отчёт сохранён в `reports/refusal_mechanisms.md`.
+
+### Chat RAG
+
+Для шага 16 добавлен диалоговый режим:
+
+- новый endpoint `POST /api/v1/chat`;
+- блок Chat RAG в Gradio;
+- учёт истории сообщений;
+- учёт предыдущих ответов модели;
+- разрешение ссылок на прошлые реплики пользователя.
+
+Если пользователь после первого ответа пишет короткий follow-up вроде:
+
+```text
+How much does it cost?
+```
+
+система строит standalone-запрос с учётом истории:
+
+```text
+I lost my driver license. What should I do? How much does it cost?
+```
+
+После этого retrieval работает уже не по голой фразе `How much does it cost?`, а по вопросу с восстановленным контекстом.
+
+Пример запроса к API:
+
+```powershell
+$body = @{
+  messages = @(
+    @{ role = "user"; content = "I lost my driver license. What should I do?" },
+    @{ role = "assistant"; content = "You can replace it online, by mail, or at a DMV office." },
+    @{ role = "user"; content = "How much does it cost?" }
+  )
+  language = "en"
+  use_judge = $true
+  use_adaptive_context = $true
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/v1/chat `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body $body
+```
+
 ## Текущие ограничения
 
 - Judge повышает надёжность, но добавляет второй LLM-вызов и увеличивает задержку.
 - Adaptive context retry улучшает устойчивость на спорных запросах, но если первый ответ отклонён judge, запрос становится дороже и медленнее: появляется дополнительная генерация и повторная проверка.
+- Refusal gate снижает риск ответов вне корпуса и экономит LLM-вызовы, но порог нельзя считать вечным: его нужно пересматривать при смене retriever, reranker или корпуса.
+- Chat RAG сейчас использует deterministic history rewrite. Для более сложных диалогов можно добавить отдельный LLM query-rewriting шаг.
 - `confidence` от генератора пока нельзя считать строгой вероятностью правильности.
 - Слишком широкий контекст может ухудшать ответ: LLM получает больше текста, но доля действительно полезных чанков падает.
 - Query expansion пока простой и rule-based. Это лучше, чем ничего, но дальше его стоит заменить на отдельный query rewriting шаг.
 - Корпус документов английский, поэтому русские вопросы потенциально стоит переводить/нормализовать перед retrieval.
-
-## Что логично улучшать дальше
-
-1. Сделать отдельный query rewriting: превращать диалоговый или размытый вопрос в самостоятельный поисковый запрос.
-2. Добавить document-level retrieval: сначала выбирать документ, потом лучшие чанки внутри него.
-3. Разделить retrieval-метрики и generation-context метрики, чтобы context expansion не путал оценку.
-4. Добавить chat-RAG для вопросов с историей диалога из MultiDoc2Dial.
-5. Оценить judge на большем наборе: сколько ошибок он ловит и сколько раз зря исправляет хороший ответ.

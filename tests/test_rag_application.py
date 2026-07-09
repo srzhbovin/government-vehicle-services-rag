@@ -62,6 +62,35 @@ class FakeRetriever:
         )
 
 
+class NegativeScoreRetriever(FakeRetriever):
+    def retrieve(
+        self,
+        query,
+        top_k=None,
+        context_window=None,
+        intro_chunks=None,
+        max_context_chunks=None,
+    ):
+        self.calls.append(
+            {
+                "top_k": top_k,
+                "context_window": context_window,
+                "intro_chunks": intro_chunks,
+                "max_context_chunks": max_context_chunks,
+            }
+        )
+        chunk = RetrievedChunk(
+            rank=1,
+            chunk_index=0,
+            chunk_id="doc-1::chunk-0",
+            document_id="doc-1",
+            title="Unrelated DMV document",
+            text="This fragment is unrelated.",
+            score=-10.0,
+        )
+        return RetrievalResult(chunks=[chunk], method=self.method_name, elapsed_ms=10.0)
+
+
 class FakeGenerator:
     configured = True
 
@@ -187,6 +216,7 @@ class RAGApplicationTests(unittest.TestCase):
         self.assertTrue(response.json()["judge_enabled"])
         self.assertTrue(response.json()["adaptive_context_enabled"])
         self.assertEqual(response.json()["adaptive_top_k"], 5)
+        self.assertTrue(response.json()["refusal_gate_enabled"])
 
     def test_retrieve_endpoint(self):
         response = self.client.post(
@@ -218,6 +248,7 @@ class RAGApplicationTests(unittest.TestCase):
         self.assertTrue(response.json()["guardrail"]["accepted"])
         self.assertFalse(response.json()["guardrail"]["corrected"])
         self.assertFalse(response.json()["adaptive_context"]["triggered"])
+        self.assertFalse(response.json()["refusal"]["refused"])
 
     def test_ask_endpoint_accepts_context_parameters(self):
         response = self.client.post(
@@ -280,6 +311,61 @@ class RAGApplicationTests(unittest.TestCase):
         self.assertEqual(len(retriever.calls), 2)
         self.assertEqual(generator.generate_calls, 2)
         self.assertEqual(generator.judge_calls, 2)
+
+    def test_refusal_gate_skips_generation_for_weak_retrieval(self):
+        settings = replace(
+            Settings.from_env(),
+            eager_load=False,
+            yandex_api_key="test",
+            yandex_folder_id="folder",
+            enable_refusal_gate=True,
+            refusal_min_top_score=0.0,
+        )
+        retriever = NegativeScoreRetriever()
+        generator = FakeGenerator()
+        client_context = TestClient(
+            create_app(
+                service=RAGService(settings, retriever=retriever, generator=generator),
+                settings=settings,
+            )
+        )
+        with client_context as client:
+            response = client.post(
+                "/api/v1/ask",
+                json={"question": "How do I cook pasta?", "language": "en"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["refusal"]["refused"])
+        self.assertEqual(body["guardrail"]["verdict"], "refused_before_generation")
+        self.assertEqual(generator.generate_calls, 0)
+
+    def test_chat_endpoint_uses_history(self):
+        response = self.client.post(
+            "/api/v1/chat",
+            json={
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "I lost my driver license. What should I do?",
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "You can replace it online, by mail, or at an office.",
+                    },
+                    {"role": "user", "content": "How much does it cost?"},
+                ],
+                "language": "en",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["question"], "How much does it cost?")
+        self.assertIn("I lost my driver license", body["standalone_question"])
+        self.assertIn("How much does it cost?", body["standalone_question"])
+        self.assertEqual(body["history_messages"], 2)
 
     def test_rejects_empty_question(self):
         response = self.client.post("/api/v1/ask", json={"question": " "})

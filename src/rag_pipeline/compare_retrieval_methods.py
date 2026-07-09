@@ -342,7 +342,12 @@ class CrossEncoderReranker:
         if device:
             kwargs["device"] = device
         self.model_name = model_name
-        self.model = CrossEncoder(model_name, **kwargs)
+        try:
+            self.model = CrossEncoder(model_name, **kwargs, local_files_only=True)
+        except TypeError:
+            self.model = CrossEncoder(model_name, **kwargs)
+        except Exception:
+            self.model = CrossEncoder(model_name, **kwargs)
 
     def rerank_many(
         self,

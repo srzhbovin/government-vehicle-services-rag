@@ -5,13 +5,19 @@ from __future__ import annotations
 import time
 from typing import Protocol
 
+from .chat import build_standalone_question, last_user_message
 from .generator import GenerationError, GenerationResult, GuardrailResult, build_generator
 from .retriever import HybridRetriever, RetrievalResult, RetrievedChunk
+from .refusal import refusal_answer, should_refuse
 from .schemas import (
     AdaptiveContextInfo,
     AskResponse,
+    ChatMessage,
+    ChatResponse,
     ContextParameters,
+    GenerationUsage,
     GuardrailInfo,
+    RefusalInfo,
     RetrievalResponse,
     SourceItem,
     TimingInfo,
@@ -193,6 +199,45 @@ class RAGService:
             intro_chunks=selected_intro,
             max_context_chunks=selected_max_context,
         )
+        refusal = self._refusal_info(question, retrieval.chunks)
+        if refusal.refused:
+            total_ms = (time.perf_counter() - total_started) * 1000
+            return AskResponse(
+                question=question,
+                answer=refusal_answer(question, language),
+                original_answer=None,
+                retrieval_method=retrieval.method,
+                generation_model=self.settings.generation_model_name,
+                prompt_strategy=self.settings.prompt_strategy,
+                answer_language=language,
+                generation_temperature=selected_temperature,
+                generation_top_p=selected_top_p,
+                top_k=initial_context.top_k,
+                context_window=initial_context.context_window,
+                intro_chunks=initial_context.intro_chunks,
+                max_context_chunks=initial_context.max_context_chunks,
+                confidence=0.0,
+                source=None,
+                structured_parse_success=None,
+                schema_valid=None,
+                guardrail=GuardrailInfo(
+                    enabled=should_judge,
+                    checked=False,
+                    accepted=False,
+                    verdict="refused_before_generation",
+                    reason=refusal.reason,
+                ),
+                adaptive_context=adaptive_context,
+                refusal=refusal,
+                sources=_source_items(retrieval),
+                usage=GenerationUsage(),
+                timings=TimingInfo(
+                    retrieval_ms=round(retrieval.elapsed_ms, 3),
+                    generation_ms=0.0,
+                    judge_ms=None,
+                    total_ms=round(total_ms, 3),
+                ),
+            )
         generation = self.generator.generate(
             question,
             retrieval.chunks,
@@ -342,6 +387,7 @@ class RAGService:
             schema_valid=generation.schema_valid,
             guardrail=guardrail,
             adaptive_context=adaptive_context,
+            refusal=refusal,
             sources=_source_items(retrieval),
             usage=generation.usage,
             timings=TimingInfo(
@@ -351,6 +397,41 @@ class RAGService:
                 total_ms=round(total_ms, 3),
             ),
         )
+
+    def chat(
+        self,
+        messages: list[ChatMessage],
+        top_k: int | None = None,
+        language: str = "auto",
+        temperature: float | None = None,
+        top_p: float | None = None,
+        max_output_tokens: int | None = None,
+        use_judge: bool | None = None,
+        context_window: int | None = None,
+        intro_chunks: int | None = None,
+        max_context_chunks: int | None = None,
+        use_adaptive_context: bool | None = None,
+    ) -> ChatResponse:
+        current_question = last_user_message(messages)
+        standalone_question = build_standalone_question(messages)
+        response = self.answer(
+            standalone_question,
+            top_k=top_k,
+            language=language,
+            temperature=temperature,
+            top_p=top_p,
+            max_output_tokens=max_output_tokens,
+            use_judge=use_judge,
+            context_window=context_window,
+            intro_chunks=intro_chunks,
+            max_context_chunks=max_context_chunks,
+            use_adaptive_context=use_adaptive_context,
+        )
+        payload = response.model_dump()
+        payload["question"] = current_question
+        payload["standalone_question"] = standalone_question
+        payload["history_messages"] = max(0, len(messages) - 1)
+        return ChatResponse(**payload)
 
     def _adaptive_context_parameters(
         self,
@@ -372,6 +453,30 @@ class RAGService:
             ),
         )
 
+    def _refusal_info(
+        self,
+        question: str,
+        chunks: list[RetrievedChunk],
+    ) -> RefusalInfo:
+        if not self.settings.enable_refusal_gate:
+            return RefusalInfo(enabled=False)
+        decision = should_refuse(
+            question,
+            chunks,
+            min_top_score=self.settings.refusal_min_top_score,
+            min_lexical_overlap=self.settings.refusal_min_lexical_overlap,
+        )
+        return RefusalInfo(
+            enabled=True,
+            refused=decision.refused,
+            strategy="reranker_score_and_lexical_overlap",
+            reason=decision.reason,
+            top_score=decision.features.top_score,
+            min_top_score=self.settings.refusal_min_top_score,
+            lexical_overlap=round(decision.features.lexical_overlap, 6),
+            min_lexical_overlap=self.settings.refusal_min_lexical_overlap,
+        )
+
 
 def _source_items(result: RetrievalResult) -> list[SourceItem]:
     return [
@@ -382,6 +487,7 @@ def _source_items(result: RetrievalResult) -> list[SourceItem]:
             title=chunk.title,
             score=chunk.score,
             text=chunk.text,
+            source_url=chunk.source_url,
         )
         for chunk in result.chunks
     ]

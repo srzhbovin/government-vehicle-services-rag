@@ -35,6 +35,7 @@ class RetrievedChunk:
     title: str | None
     text: str
     score: float
+    source_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -174,9 +175,10 @@ class HybridRetriever:
         encoder_kwargs: dict[str, Any] = {}
         if self.settings.device:
             encoder_kwargs["device"] = self.settings.device
-        self.encoder = SentenceTransformer(
+        self.encoder = self._load_sentence_transformer(
+            SentenceTransformer,
             self.settings.embedding_model,
-            **encoder_kwargs,
+            encoder_kwargs,
         )
         if self.settings.use_reranker:
             self.reranker = CrossEncoderReranker(
@@ -184,6 +186,29 @@ class HybridRetriever:
                 device=self.settings.device,
             )
         self._ready = True
+
+    def _load_sentence_transformer(
+        self,
+        sentence_transformer_cls: Any,
+        model_name: str,
+        kwargs: dict[str, Any],
+    ) -> Any:
+        try:
+            return sentence_transformer_cls(
+                model_name,
+                **kwargs,
+                local_files_only=True,
+            )
+        except TypeError:
+            return sentence_transformer_cls(model_name, **kwargs)
+        except Exception as local_error:
+            try:
+                return sentence_transformer_cls(model_name, **kwargs)
+            except Exception as error:
+                raise RetrieverError(
+                    f"Cannot load embedding model `{model_name}`. "
+                    "Check the local model cache or internet connection."
+                ) from error
 
     def retrieve(
         self,
@@ -283,6 +308,15 @@ class HybridRetriever:
                     title=chunk.get("title"),
                     text=str(chunk["text"]),
                     score=float(item.score),
+                    source_url=(
+                        str(
+                            chunk.get("source_url")
+                            or chunk.get("url")
+                            or chunk.get("link")
+                            or ""
+                        ).strip()
+                        or None
+                    ),
                 )
             )
         return RetrievalResult(

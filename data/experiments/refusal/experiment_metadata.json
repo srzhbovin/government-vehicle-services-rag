@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-07-09T13:42:12.692720+00:00",
+  "positive_questions": 20,
+  "negative_questions": 20,
+  "best": {
+    "mechanism": "reranker_score_threshold",
+    "configuration": "top_score>=-0.5",
+    "accuracy": 0.975,
+    "precision_answerable": 1.0,
+    "recall_answerable": 0.95,
+    "specificity_unanswerable": 1.0,
+    "false_accept_rate": 0.0,
+    "false_refusal_rate": 0.05,
+    "balanced_score": 0.975,
+    "tp": 19,
+    "fp": 0,
+    "tn": 20,
+    "fn": 1
+  }
+}

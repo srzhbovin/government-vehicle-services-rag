@@ -13,6 +13,8 @@ from rag_pipeline.retriever import RetrieverError
 from rag_pipeline.schemas import (
     AskRequest,
     AskResponse,
+    ChatRequest,
+    ChatResponse,
     HealthResponse,
     RetrievalResponse,
 )
@@ -83,6 +85,9 @@ def create_app(
             adaptive_context_window=application_settings.adaptive_context_window,
             adaptive_context_intro_chunks=application_settings.adaptive_context_intro_chunks,
             adaptive_max_context_chunks=application_settings.adaptive_max_context_chunks,
+            refusal_gate_enabled=application_settings.enable_refusal_gate,
+            refusal_min_top_score=application_settings.refusal_min_top_score,
+            refusal_min_lexical_overlap=application_settings.refusal_min_lexical_overlap,
             judge_enabled=application_settings.enable_judge,
             judge_min_score=application_settings.judge_min_score,
         )
@@ -111,6 +116,30 @@ def create_app(
             return await run_in_threadpool(
                 _service(request).answer,
                 payload.question,
+                payload.top_k,
+                payload.language,
+                payload.temperature,
+                payload.top_p,
+                payload.max_output_tokens,
+                payload.use_judge,
+                payload.context_window,
+                payload.intro_chunks,
+                payload.max_context_chunks,
+                payload.use_adaptive_context,
+            )
+        except RetrieverError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        except GenerationError as error:
+            raise HTTPException(status_code=502, detail=str(error)) from error
+        except SettingsError as error:
+            raise HTTPException(status_code=500, detail=str(error)) from error
+
+    @app.post("/api/v1/chat", response_model=ChatResponse, tags=["rag"])
+    async def chat(payload: ChatRequest, request: Request) -> ChatResponse:
+        try:
+            return await run_in_threadpool(
+                _service(request).chat,
+                payload.messages,
                 payload.top_k,
                 payload.language,
                 payload.temperature,
