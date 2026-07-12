@@ -320,7 +320,7 @@ class YandexGenerator:
 
 
 class LocalOpenAICompatibleGenerator:
-    """Generator for LM Studio and other OpenAI-compatible local servers."""
+    """Generator for LMDeploy, LM Studio and other OpenAI-compatible servers."""
 
     def __init__(
         self,
@@ -387,7 +387,7 @@ class LocalOpenAICompatibleGenerator:
             data = response.json()
         except httpx.ConnectError as error:
             raise GenerationError(
-                "Local LLM server is unavailable. Start the LM Studio server on port 1234."
+                "OpenAI-compatible LLM server is unavailable. Check LOCAL_LLM_BASE_URL."
             ) from error
         except httpx.HTTPStatusError as error:
             raise GenerationError(
@@ -476,7 +476,7 @@ class LocalOpenAICompatibleGenerator:
             data = response.json()
         except httpx.ConnectError as error:
             raise GenerationError(
-                "Local LLM server is unavailable. Start the LM Studio server on port 1234."
+                "OpenAI-compatible LLM server is unavailable. Check LOCAL_LLM_BASE_URL."
             ) from error
         except httpx.HTTPStatusError as error:
             raise GenerationError(
@@ -530,12 +530,12 @@ class LocalOpenAICompatibleGenerator:
         if model_ids:
             return model_ids[0]
         raise GenerationError(
-            "No text generation model is available in LM Studio. Download or load a model first."
+            "No text generation model is available on the OpenAI-compatible server."
         )
 
 
 def build_generator(settings: Settings):
-    if settings.llm_provider == "lmstudio":
+    if settings.llm_provider in {"lmstudio", "lmdeploy"}:
         return LocalOpenAICompatibleGenerator(settings)
     return YandexGenerator(settings)
 

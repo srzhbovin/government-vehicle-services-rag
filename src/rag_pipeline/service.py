@@ -5,8 +5,17 @@ from __future__ import annotations
 import time
 from typing import Protocol
 
-from .chat import build_standalone_question, last_user_message
-from .generator import GenerationError, GenerationResult, GuardrailResult, build_generator
+from .chat import (
+    build_chat_question_for_generation,
+    build_standalone_question,
+    last_user_message,
+)
+from .generator import (
+    GenerationError,
+    GenerationResult,
+    GuardrailResult,
+    build_generator,
+)
 from .retriever import HybridRetriever, RetrievalResult, RetrievedChunk
 from .refusal import refusal_answer, should_refuse
 from .schemas import (
@@ -100,14 +109,10 @@ class RAGService:
     ) -> RetrievalResponse:
         requested_top_k = top_k or self.settings.top_k
         selected_window = (
-            self.settings.context_window
-            if context_window is None
-            else context_window
+            self.settings.context_window if context_window is None else context_window
         )
         selected_intro = (
-            self.settings.context_intro_chunks
-            if intro_chunks is None
-            else intro_chunks
+            self.settings.context_intro_chunks if intro_chunks is None else intro_chunks
         )
         selected_max_context = (
             self.settings.max_context_chunks
@@ -145,13 +150,14 @@ class RAGService:
         intro_chunks: int | None = None,
         max_context_chunks: int | None = None,
         use_adaptive_context: bool | None = None,
+        *,
+        generation_question: str | None = None,
     ) -> AskResponse:
         total_started = time.perf_counter()
+        question_for_generation = generation_question or question
         requested_top_k = top_k or self.settings.top_k
         selected_temperature = (
-            self.settings.generation_temperature
-            if temperature is None
-            else temperature
+            self.settings.generation_temperature if temperature is None else temperature
         )
         selected_top_p = self.settings.generation_top_p if top_p is None else top_p
         selected_max_tokens = (
@@ -160,14 +166,10 @@ class RAGService:
             else max_output_tokens
         )
         selected_window = (
-            self.settings.context_window
-            if context_window is None
-            else context_window
+            self.settings.context_window if context_window is None else context_window
         )
         selected_intro = (
-            self.settings.context_intro_chunks
-            if intro_chunks is None
-            else intro_chunks
+            self.settings.context_intro_chunks if intro_chunks is None else intro_chunks
         )
         selected_max_context = (
             self.settings.max_context_chunks
@@ -239,7 +241,7 @@ class RAGService:
                 ),
             )
         generation = self.generator.generate(
-            question,
+            question_for_generation,
             retrieval.chunks,
             language,
             temperature=selected_temperature,
@@ -257,7 +259,7 @@ class RAGService:
         if should_judge:
             try:
                 judgment = self.generator.judge_answer(
-                    question,
+                    question_for_generation,
                     retrieval.chunks,
                     generation.answer,
                     language,
@@ -276,9 +278,7 @@ class RAGService:
                     if judgment.elapsed_ms is not None
                     else None
                 )
-                corrected = bool(
-                    not judgment.accepted and judgment.corrected_answer
-                )
+                corrected = bool(not judgment.accepted and judgment.corrected_answer)
                 if corrected and judgment.corrected_answer:
                     original_answer = generation.answer
                     final_answer = judgment.corrected_answer
@@ -315,7 +315,7 @@ class RAGService:
                                 max_context_chunks=retry_context.max_context_chunks,
                             )
                             retry_generation = self.generator.generate(
-                                question,
+                                question_for_generation,
                                 retry_retrieval.chunks,
                                 language,
                                 temperature=selected_temperature,
@@ -325,15 +325,13 @@ class RAGService:
                             retrieval_ms += retry_retrieval.elapsed_ms
                             generation_ms += retry_generation.elapsed_ms
                             retry_judgment = self.generator.judge_answer(
-                                question,
+                                question_for_generation,
                                 retry_retrieval.chunks,
                                 retry_generation.answer,
                                 language,
                             )
                         except GenerationError as error:
-                            adaptive_context.reason = (
-                                f"{adaptive_context.reason}; adaptive retry failed: {error}"
-                            )
+                            adaptive_context.reason = f"{adaptive_context.reason}; adaptive retry failed: {error}"
                         else:
                             if retry_judgment.elapsed_ms is not None:
                                 judge_ms = (judge_ms or 0.0) + round(
@@ -414,6 +412,10 @@ class RAGService:
     ) -> ChatResponse:
         current_question = last_user_message(messages)
         standalone_question = build_standalone_question(messages)
+        generation_question = build_chat_question_for_generation(
+            messages,
+            standalone_question,
+        )
         response = self.answer(
             standalone_question,
             top_k=top_k,
@@ -426,6 +428,7 @@ class RAGService:
             intro_chunks=intro_chunks,
             max_context_chunks=max_context_chunks,
             use_adaptive_context=use_adaptive_context,
+            generation_question=generation_question,
         )
         payload = response.model_dump()
         payload["question"] = current_question

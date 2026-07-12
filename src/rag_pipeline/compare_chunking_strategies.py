@@ -23,18 +23,20 @@ from pathlib import Path
 from typing import Any, Iterable
 
 try:
-    from .compress_documents_bm25 import split_segments, tokenize
+    from .compress_documents_bm25 import split_segments
     from .evaluate_bm25_retrieval import evaluate, read_jsonl
     from .recursive_chunk_documents import chunk_document as recursive_chunk_document
 except ImportError:
-    from compress_documents_bm25 import split_segments, tokenize
+    from compress_documents_bm25 import split_segments
     from evaluate_bm25_retrieval import evaluate, read_jsonl
     from recursive_chunk_documents import chunk_document as recursive_chunk_document
 
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DOCUMENTS = ROOT / "data" / "current" / "prepared" / "dmv_documents.jsonl"
-DEFAULT_QUESTIONS = ROOT / "data" / "current" / "prepared" / "dmv_questions_validation.jsonl"
+DEFAULT_QUESTIONS = (
+    ROOT / "data" / "current" / "prepared" / "dmv_questions_validation.jsonl"
+)
 DEFAULT_OUTPUT_DIR = ROOT / "data" / "experiments" / "chunking"
 DEFAULT_REPORT = ROOT / "reports" / "chunking_comparison.md"
 
@@ -148,7 +150,9 @@ def character_boundaries(
     return boundaries
 
 
-def character_chunks(document: dict[str, Any], config: ChunkConfig) -> list[dict[str, Any]]:
+def character_chunks(
+    document: dict[str, Any], config: ChunkConfig
+) -> list[dict[str, Any]]:
     return make_chunk_records(
         document,
         character_boundaries(document["text"], config.chunk_size, config.chunk_overlap),
@@ -190,7 +194,9 @@ def token_chunks(document: dict[str, Any], config: ChunkConfig) -> list[dict[str
     )
 
 
-def recursive_chunks(document: dict[str, Any], config: ChunkConfig) -> list[dict[str, Any]]:
+def recursive_chunks(
+    document: dict[str, Any], config: ChunkConfig
+) -> list[dict[str, Any]]:
     chunks = recursive_chunk_document(
         document,
         chunk_size=config.chunk_size,
@@ -220,14 +226,18 @@ def segment_idf(segments: list[Any]) -> dict[str, float]:
     }
 
 
-def tfidf_cosine(left_tokens: list[str], right_tokens: list[str], idf: dict[str, float]) -> float:
+def tfidf_cosine(
+    left_tokens: list[str], right_tokens: list[str], idf: dict[str, float]
+) -> float:
     if not left_tokens or not right_tokens:
         return 0.0
 
     left = Counter(left_tokens)
     right = Counter(right_tokens)
     shared_terms = set(left).intersection(right)
-    dot = sum(left[term] * right[term] * idf.get(term, 0.0) ** 2 for term in shared_terms)
+    dot = sum(
+        left[term] * right[term] * idf.get(term, 0.0) ** 2 for term in shared_terms
+    )
     left_norm = math.sqrt(
         sum((frequency * idf.get(term, 0.0)) ** 2 for term, frequency in left.items())
     )
@@ -308,7 +318,9 @@ def semantic_boundaries(
     return boundaries
 
 
-def semantic_chunks(document: dict[str, Any], config: ChunkConfig) -> list[dict[str, Any]]:
+def semantic_chunks(
+    document: dict[str, Any], config: ChunkConfig
+) -> list[dict[str, Any]]:
     threshold = config.semantic_threshold
     if threshold is None:
         threshold = 0.08
@@ -324,7 +336,9 @@ def semantic_chunks(document: dict[str, Any], config: ChunkConfig) -> list[dict[
     )
 
 
-def build_chunks(documents: list[dict[str, Any]], config: ChunkConfig) -> list[dict[str, Any]]:
+def build_chunks(
+    documents: list[dict[str, Any]], config: ChunkConfig
+) -> list[dict[str, Any]]:
     splitter_map = {
         "character": character_chunks,
         "recursive": recursive_chunks,
@@ -474,7 +488,9 @@ def markdown_table(records: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def build_report(records: list[dict[str, Any]], documents_path: Path, questions_path: Path) -> str:
+def build_report(
+    records: list[dict[str, Any]], documents_path: Path, questions_path: Path
+) -> str:
     sorted_records = sorted(
         records,
         key=lambda record: (record["recall@10"], record["recall@5"], record["mrr@10"]),
@@ -510,7 +526,7 @@ def build_report(records: list[dict[str, Any]], documents_path: Path, questions_
 
 ## Главное
 
-- Лучший вариант по Recall@10: `{best['splitter']}`, size={best['chunk_size']}, overlap={best['chunk_overlap']}, Recall@10={best['recall@10']:.4f}.
+- Лучший вариант по Recall@10: `{best["splitter"]}`, size={best["chunk_size"]}, overlap={best["chunk_overlap"]}, Recall@10={best["recall@10"]:.4f}.
 {company_line}
 - TokenTextSplitter в этом датасете оказался сильным конкурентом, потому что BM25 retrieval тоже работает по словам/термам.
 - Semantic-lite реализован без внешних embedding-моделей, через sentence grouping и TF-IDF similarity;
@@ -526,7 +542,9 @@ def build_report(records: list[dict[str, Any]], documents_path: Path, questions_
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Compare chunking strategies for RAG retrieval.")
+    parser = argparse.ArgumentParser(
+        description="Compare chunking strategies for RAG retrieval."
+    )
     parser.add_argument("--documents", type=Path, default=DEFAULT_DOCUMENTS)
     parser.add_argument("--questions", type=Path, default=DEFAULT_QUESTIONS)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)

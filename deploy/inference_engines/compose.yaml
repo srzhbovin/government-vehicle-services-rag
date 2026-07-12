@@ -1,0 +1,143 @@
+name: rag-inference-engines
+
+x-engine-common: &engine-common
+  restart: "no"
+  ipc: host
+  shm_size: "8gb"
+  volumes:
+    - hf-cache:/root/.cache/huggingface
+  environment:
+    HF_HOME: /root/.cache/huggingface
+    HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-1}"
+  ulimits:
+    memlock:
+      soft: -1
+      hard: -1
+    stack:
+      soft: 67108864
+      hard: 67108864
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            device_ids: ["${GPU_DEVICE_ID:-0}"]
+            capabilities: [gpu]
+
+services:
+  sglang:
+    <<: *engine-common
+    profiles: [sglang]
+    image: "${SGLANG_IMAGE}"
+    entrypoint: [python3, -m, sglang.launch_server]
+    command:
+      - --model-path
+      - "${MODEL_PATH}"
+      - --served-model-name
+      - "${SERVED_MODEL_NAME}"
+      - --dtype
+      - "${DTYPE}"
+      - --tp-size
+      - "${TP_SIZE}"
+      - --context-length
+      - "${CONTEXT_LENGTH}"
+      - --max-running-requests
+      - "${MAX_SERVER_BATCH}"
+      - --mem-fraction-static
+      - "${SGLANG_MEM_FRACTION_STATIC}"
+      - --host
+      - 0.0.0.0
+      - --port
+      - "30000"
+    ports:
+      - "127.0.0.1:${SERVER_PORT}:30000"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python3 -c "import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:30000/v1/models', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20m
+
+  vllm:
+    <<: *engine-common
+    profiles: [vllm]
+    image: "${VLLM_IMAGE}"
+    entrypoint: [vllm, serve]
+    command:
+      - "${MODEL_PATH}"
+      - --served-model-name
+      - "${SERVED_MODEL_NAME}"
+      - --dtype
+      - "${DTYPE}"
+      - --tensor-parallel-size
+      - "${TP_SIZE}"
+      - --max-model-len
+      - "${CONTEXT_LENGTH}"
+      - --max-num-seqs
+      - "${MAX_SERVER_BATCH}"
+      - --gpu-memory-utilization
+      - "${VLLM_GPU_MEMORY_UTILIZATION}"
+      - --generation-config
+      - vllm
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    ports:
+      - "127.0.0.1:${SERVER_PORT}:8000"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python3 -c "import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8000/v1/models', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20m
+
+  lmdeploy:
+    <<: *engine-common
+    profiles: [lmdeploy]
+    image: "${LMDEPLOY_IMAGE}"
+    entrypoint: [lmdeploy, serve, api_server]
+    command:
+      - "${MODEL_PATH}"
+      - --model-name
+      - "${SERVED_MODEL_NAME}"
+      - --backend
+      - turbomind
+      - --dtype
+      - "${DTYPE}"
+      - --tp
+      - "${TP_SIZE}"
+      - --session-len
+      - "${CONTEXT_LENGTH}"
+      - --max-batch-size
+      - "${MAX_SERVER_BATCH}"
+      - --cache-max-entry-count
+      - "${LMDEPLOY_CACHE_MAX_ENTRY_COUNT}"
+      - --server-name
+      - 0.0.0.0
+      - --server-port
+      - "23333"
+    ports:
+      - "127.0.0.1:${SERVER_PORT}:23333"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python3 -c "import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:23333/v1/models', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20m
+
+volumes:
+  hf-cache:
+    name: "${HF_CACHE_VOLUME}"

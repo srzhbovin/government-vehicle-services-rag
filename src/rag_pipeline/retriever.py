@@ -91,7 +91,9 @@ def expand_query(query: str) -> str:
             )
 
     if "change" in normalized and "address" in normalized:
-        additions.extend(["change address", "within 10 days", "license permit registration"])
+        additions.extend(
+            ["change address", "within 10 days", "license permit registration"]
+        )
 
     if not additions:
         return query
@@ -201,7 +203,7 @@ class HybridRetriever:
             )
         except TypeError:
             return sentence_transformer_cls(model_name, **kwargs)
-        except Exception as local_error:
+        except Exception:
             try:
                 return sentence_transformer_cls(model_name, **kwargs)
             except Exception as error:
@@ -226,14 +228,10 @@ class HybridRetriever:
         if not 1 <= requested_k <= 10:
             raise RetrieverError("top_k must be between 1 and 10")
         selected_window = (
-            self.settings.context_window
-            if context_window is None
-            else context_window
+            self.settings.context_window if context_window is None else context_window
         )
         selected_intro = (
-            self.settings.context_intro_chunks
-            if intro_chunks is None
-            else intro_chunks
+            self.settings.context_intro_chunks if intro_chunks is None else intro_chunks
         )
         selected_max_context = (
             self.settings.max_context_chunks
@@ -245,12 +243,16 @@ class HybridRetriever:
         if selected_intro < 0:
             raise RetrieverError("intro_chunks cannot be negative")
         if selected_max_context < requested_k:
-            raise RetrieverError("max_context_chunks must be greater than or equal to top_k")
+            raise RetrieverError(
+                "max_context_chunks must be greater than or equal to top_k"
+            )
         candidate_k = min(self.settings.candidate_k, len(self.chunks))
 
         started = time.perf_counter()
         with self._inference_lock:
-            search_query = expand_query(query) if self.settings.use_query_expansion else query
+            search_query = (
+                expand_query(query) if self.settings.use_query_expansion else query
+            )
             query_vector = self.encoder.encode(
                 [search_query],
                 convert_to_numpy=True,
@@ -345,7 +347,9 @@ class HybridRetriever:
             document_id = str(chunk.get("document_id"))
             by_document.setdefault(document_id, []).append(global_index)
         for indices in by_document.values():
-            indices.sort(key=lambda index: int(self.chunks[index].get("chunk_index") or 0))
+            indices.sort(
+                key=lambda index: int(self.chunks[index].get("chunk_index") or 0)
+            )
 
         selected: list[RankedItem] = []
         seen: set[int] = set()

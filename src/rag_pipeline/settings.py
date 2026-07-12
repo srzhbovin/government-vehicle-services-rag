@@ -99,6 +99,7 @@ class Settings:
         load_dotenv(env_file or PROJECT_ROOT / ".env", override=False)
 
         project_root = PROJECT_ROOT
+        llm_provider = os.getenv("RAG_LLM_PROVIDER", "yandex").strip().lower()
         chunks_path = Path(
             os.getenv(
                 "RAG_CHUNKS_PATH",
@@ -192,17 +193,28 @@ class Settings:
                 0.5,
                 "RAG_BM25_WEIGHT",
             ),
-            llm_provider=os.getenv("RAG_LLM_PROVIDER", "yandex").strip().lower(),
+            llm_provider=llm_provider,
             prompt_strategy=os.getenv(
                 "RAG_PROMPT_STRATEGY",
                 "structured_output",
             ).strip().lower(),
             local_llm_base_url=os.getenv(
                 "LOCAL_LLM_BASE_URL",
-                "http://127.0.0.1:1234/v1",
+                (
+                    "http://127.0.0.1:18000/v1"
+                    if llm_provider == "lmdeploy"
+                    else "http://127.0.0.1:1234/v1"
+                ),
             ).rstrip("/"),
-            local_llm_model=os.getenv("LOCAL_LLM_MODEL", "google/gemma-3-4b"),
-            local_llm_api_key=os.getenv("LOCAL_LLM_API_KEY", "lm-studio"),
+            local_llm_model=os.getenv(
+                "LOCAL_LLM_MODEL",
+                (
+                    "qwen2.5-3b-instruct"
+                    if llm_provider == "lmdeploy"
+                    else "google/gemma-3-4b"
+                ),
+            ),
+            local_llm_api_key=os.getenv("LOCAL_LLM_API_KEY", "local"),
             yandex_api_key=os.getenv("YANDEX_CLOUD_API_KEY") or None,
             yandex_folder_id=(
                 os.getenv("YANDEX_CLOUD_FOLDER_ID")
@@ -266,13 +278,13 @@ class Settings:
 
     @property
     def generator_configured(self) -> bool:
-        if self.llm_provider == "lmstudio":
+        if self.llm_provider in {"lmstudio", "lmdeploy"}:
             return bool(self.local_llm_base_url)
         return bool(self.yandex_api_key and self.yandex_folder_id)
 
     @property
     def generation_model_name(self) -> str:
-        if self.llm_provider == "lmstudio":
+        if self.llm_provider in {"lmstudio", "lmdeploy"}:
             return self.local_llm_model
         return self.yandex_model
 
@@ -295,8 +307,10 @@ class Settings:
             raise SettingsError("Missing Yandex Cloud settings: " + ", ".join(missing))
 
     def validate(self) -> None:
-        if self.llm_provider not in {"lmstudio", "yandex"}:
-            raise SettingsError("RAG_LLM_PROVIDER must be 'lmstudio' or 'yandex'")
+        if self.llm_provider not in {"lmstudio", "lmdeploy", "yandex"}:
+            raise SettingsError(
+                "RAG_LLM_PROVIDER must be 'lmstudio', 'lmdeploy' or 'yandex'"
+            )
         if self.prompt_strategy not in {
             "plain",
             "json",

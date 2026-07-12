@@ -14,9 +14,9 @@ from rag_pipeline.generator import (  # noqa: E402
     GenerationError,
     LocalOpenAICompatibleGenerator,
     YandexGenerator,
+    build_generator,
     build_context_prompt,
 )
-from rag_pipeline.prompting import PromptStrategy  # noqa: E402
 from rag_pipeline.retriever import RetrievedChunk  # noqa: E402
 from rag_pipeline.settings import Settings  # noqa: E402
 
@@ -47,6 +47,20 @@ def source(rank=1):
 
 
 class GeneratorTests(unittest.TestCase):
+    def test_lmdeploy_uses_openai_compatible_generator(self):
+        settings = replace(
+            Settings.from_env(),
+            llm_provider="lmdeploy",
+            local_llm_base_url="http://127.0.0.1:18000/v1",
+            local_llm_model="qwen2.5-3b-instruct",
+        )
+
+        settings.validate()
+
+        self.assertIsInstance(build_generator(settings), LocalOpenAICompatibleGenerator)
+        self.assertTrue(settings.generator_configured)
+        self.assertEqual(settings.generation_model_name, "qwen2.5-3b-instruct")
+
     def test_context_prompt_contains_question_source_and_marker(self):
         prompt = build_context_prompt("How do I renew?", [source()])
 
@@ -90,7 +104,9 @@ class GeneratorTests(unittest.TestCase):
         self.assertEqual(result.usage.total_tokens, 112)
         self.assertEqual(captured["authorization"], "Api-Key test-secret")
         self.assertIn("Answer only", captured["payload"]["instructions"])
-        self.assertEqual(captured["payload"]["top_p"], settings_with_credentials().generation_top_p)
+        self.assertEqual(
+            captured["payload"]["top_p"], settings_with_credentials().generation_top_p
+        )
 
     def test_falls_back_when_model_is_not_available(self):
         models = []
@@ -234,9 +250,7 @@ class GeneratorTests(unittest.TestCase):
                 200,
                 json={
                     "model": "google/gemma-3-4b",
-                    "choices": [
-                        {"message": {"content": "Ответ на русском [1]."}}
-                    ],
+                    "choices": [{"message": {"content": "Ответ на русском [1]."}}],
                     "usage": {
                         "prompt_tokens": 50,
                         "completion_tokens": 8,

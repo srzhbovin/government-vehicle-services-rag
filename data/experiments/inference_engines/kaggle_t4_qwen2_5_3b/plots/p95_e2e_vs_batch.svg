@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="480.0" y="32" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="600">p95 E2E latency vs batch</text>
+<line x1="90" y1="480.00" x2="925" y2="480.00" stroke="#e5e7eb"/>
+<text x="80" y="484.00" text-anchor="end" font-family="sans-serif" font-size="12" fill="#4b5563">0.0</text>
+<line x1="90" y1="397.00" x2="925" y2="397.00" stroke="#e5e7eb"/>
+<text x="80" y="401.00" text-anchor="end" font-family="sans-serif" font-size="12" fill="#4b5563">2709.2</text>
+<line x1="90" y1="314.00" x2="925" y2="314.00" stroke="#e5e7eb"/>
+<text x="80" y="318.00" text-anchor="end" font-family="sans-serif" font-size="12" fill="#4b5563">5418.3</text>
+<line x1="90" y1="231.00" x2="925" y2="231.00" stroke="#e5e7eb"/>
+<text x="80" y="235.00" text-anchor="end" font-family="sans-serif" font-size="12" fill="#4b5563">8127.5</text>
+<line x1="90" y1="148.00" x2="925" y2="148.00" stroke="#e5e7eb"/>
+<text x="80" y="152.00" text-anchor="end" font-family="sans-serif" font-size="12" fill="#4b5563">10836.7</text>
+<line x1="90" y1="65.00" x2="925" y2="65.00" stroke="#e5e7eb"/>
+<text x="80" y="69.00" text-anchor="end" font-family="sans-serif" font-size="12" fill="#4b5563">13545.8</text>
+<line x1="90" y1="65" x2="90" y2="480" stroke="#111827"/>
+<line x1="90" y1="480" x2="925" y2="480" stroke="#111827"/>
+<text x="90.00" y="504" text-anchor="middle" font-family="sans-serif" font-size="13">1</text>
+<text x="298.75" y="504" text-anchor="middle" font-family="sans-serif" font-size="13">2</text>
+<text x="507.50" y="504" text-anchor="middle" font-family="sans-serif" font-size="13">4</text>
+<text x="716.25" y="504" text-anchor="middle" font-family="sans-serif" font-size="13">8</text>
+<text x="925.00" y="504" text-anchor="middle" font-family="sans-serif" font-size="13">16</text>
+<text x="507.5" y="535" text-anchor="middle" font-family="sans-serif" font-size="14">Effective batch size / concurrency</text>
+<text transform="translate(22 272.5) rotate(-90)" text-anchor="middle" font-family="sans-serif" font-size="14">p95 E2E, ms</text>
+<polyline points="90.00,336.21 298.75,354.45 507.50,343.61 716.25,313.48 925.00,268.28" fill="none" stroke="#059669" stroke-width="3"/>
+<circle cx="90.00" cy="336.21" r="4" fill="#059669"/>
+<circle cx="298.75" cy="354.45" r="4" fill="#059669"/>
+<circle cx="507.50" cy="343.61" r="4" fill="#059669"/>
+<circle cx="716.25" cy="313.48" r="4" fill="#059669"/>
+<circle cx="925.00" cy="268.28" r="4" fill="#059669"/>
+<line x1="90" y1="552" x2="114" y2="552" stroke="#059669" stroke-width="3"/>
+<text x="121" y="556" font-family="sans-serif" font-size="13">lmdeploy</text>
+<polyline points="90.00,309.14 298.75,336.13 507.50,305.94 716.25,246.84 925.00,102.73" fill="none" stroke="#2563eb" stroke-width="3"/>
+<circle cx="90.00" cy="309.14" r="4" fill="#2563eb"/>
+<circle cx="298.75" cy="336.13" r="4" fill="#2563eb"/>
+<circle cx="507.50" cy="305.94" r="4" fill="#2563eb"/>
+<circle cx="716.25" cy="246.84" r="4" fill="#2563eb"/>
+<circle cx="925.00" cy="102.73" r="4" fill="#2563eb"/>
+<line x1="240" y1="552" x2="264" y2="552" stroke="#2563eb" stroke-width="3"/>
+<text x="271" y="556" font-family="sans-serif" font-size="13">sglang</text>
+<polyline points="90.00,317.74 298.75,348.86 507.50,333.03 716.25,302.50 925.00,243.44" fill="none" stroke="#dc2626" stroke-width="3"/>
+<circle cx="90.00" cy="317.74" r="4" fill="#dc2626"/>
+<circle cx="298.75" cy="348.86" r="4" fill="#dc2626"/>
+<circle cx="507.50" cy="333.03" r="4" fill="#dc2626"/>
+<circle cx="716.25" cy="302.50" r="4" fill="#dc2626"/>
+<circle cx="925.00" cy="243.44" r="4" fill="#dc2626"/>
+<line x1="390" y1="552" x2="414" y2="552" stroke="#dc2626" stroke-width="3"/>
+<text x="421" y="556" font-family="sans-serif" font-size="13">vllm</text>
+</svg>

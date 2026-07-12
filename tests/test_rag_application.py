@@ -40,6 +40,7 @@ class FakeRetriever:
     ):
         self.calls.append(
             {
+                "query": query,
                 "top_k": top_k,
                 "context_window": context_window,
                 "intro_chunks": intro_chunks,
@@ -73,6 +74,7 @@ class NegativeScoreRetriever(FakeRetriever):
     ):
         self.calls.append(
             {
+                "query": query,
                 "top_k": top_k,
                 "context_window": context_window,
                 "intro_chunks": intro_chunks,
@@ -97,6 +99,8 @@ class FakeGenerator:
     def __init__(self):
         self.generate_calls = 0
         self.judge_calls = 0
+        self.generated_questions = []
+        self.judged_questions = []
 
     def generate(
         self,
@@ -109,6 +113,7 @@ class FakeGenerator:
         max_output_tokens=None,
     ):
         self.generate_calls += 1
+        self.generated_questions.append(question)
         return GenerationResult(
             answer="Grounded answer [1].",
             model="fake-model",
@@ -118,6 +123,7 @@ class FakeGenerator:
 
     def judge_answer(self, question, chunks, answer, language="auto"):
         self.judge_calls += 1
+        self.judged_questions.append(question)
         return GuardrailResult(
             checked=True,
             accepted=True,
@@ -142,6 +148,7 @@ class RejectThenAcceptGenerator(FakeGenerator):
         max_output_tokens=None,
     ):
         self.generate_calls += 1
+        self.generated_questions.append(question)
         answer = (
             "Unsupported compact answer [1]."
             if self.generate_calls == 1
@@ -156,6 +163,7 @@ class RejectThenAcceptGenerator(FakeGenerator):
 
     def judge_answer(self, question, chunks, answer, language="auto"):
         self.judge_calls += 1
+        self.judged_questions.append(question)
         if self.judge_calls == 1:
             return GuardrailResult(
                 checked=True,
@@ -366,6 +374,67 @@ class RAGApplicationTests(unittest.TestCase):
         self.assertIn("I lost my driver license", body["standalone_question"])
         self.assertIn("How much does it cost?", body["standalone_question"])
         self.assertEqual(body["history_messages"], 2)
+        retrieval_question = self.fake_retriever.calls[-1]["query"]
+        generation_question = self.fake_generator.generated_questions[-1]
+        judge_question = self.fake_generator.judged_questions[-1]
+        self.assertEqual(retrieval_question, body["standalone_question"])
+        self.assertNotIn("You can replace it online", retrieval_question)
+        self.assertIn("You can replace it online", generation_question)
+        self.assertIn(body["standalone_question"], generation_question)
+        self.assertIn("How much does it cost?", generation_question)
+        self.assertEqual(judge_question, generation_question)
+
+    def test_chat_adaptive_retry_keeps_history_for_generation(self):
+        settings = replace(
+            Settings.from_env(),
+            eager_load=False,
+            yandex_api_key="test",
+            yandex_folder_id="folder",
+            top_k=3,
+            max_context_chunks=6,
+            enable_adaptive_context=True,
+        )
+        retriever = FakeRetriever()
+        generator = RejectThenAcceptGenerator()
+        client_context = TestClient(
+            create_app(
+                service=RAGService(settings, retriever=retriever, generator=generator),
+                settings=settings,
+            )
+        )
+        with client_context as client:
+            response = client.post(
+                "/api/v1/chat",
+                json={
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": "I moved to a new address. What should I do?",
+                        },
+                        {
+                            "role": "assistant",
+                            "content": "Report the change to DMV within 10 days.",
+                        },
+                        {"role": "user", "content": "Can I do it online?"},
+                    ],
+                    "language": "en",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(generator.generate_calls, 2)
+        self.assertEqual(generator.judge_calls, 2)
+        self.assertEqual(
+            generator.generated_questions[0], generator.generated_questions[1]
+        )
+        self.assertEqual(generator.judged_questions, generator.generated_questions)
+        self.assertIn("Report the change to DMV", generator.generated_questions[0])
+        self.assertTrue(
+            all(
+                call["query"] == response.json()["standalone_question"]
+                for call in retriever.calls
+            )
+        )
 
     def test_rejects_empty_question(self):
         response = self.client.post("/api/v1/ask", json={"question": " "})

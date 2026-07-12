@@ -1,0 +1,38 @@
+{
+  "platform": "Kaggle",
+  "gpu": "Tesla T4",
+  "gpu_memory_mib": 15360,
+  "gpu_driver_version": "580.159.04",
+  "compute_capability": "7.5",
+  "gpu_index": 0,
+  "model": "Qwen/Qwen2.5-3B-Instruct",
+  "revision": "aa8e72537993ba99e69dfaafa59ed015b17504d1",
+  "dtype": "float16",
+  "tensor_parallel_size": 1,
+  "context_length": 2048,
+  "input_tokens": 512,
+  "shared_prefix_tokens": 128,
+  "max_new_tokens": 128,
+  "temperature": 0.0,
+  "top_p": 1.0,
+  "generation_seed": null,
+  "ignore_eos": false,
+  "batch_sizes": [1, 2, 4, 8, 16],
+  "repeats": 3,
+  "measured_requests_per_configuration": 16,
+  "warmup_requests_per_configuration": 4,
+  "prompt_file_sha256": "7f4c29ab0e3d9c965a32cd1aaabd80a94c87f45b842abc79d707f51607a076df",
+  "package_versions": {
+    "sglang": "0.5.15",
+    "vllm": "0.25.0",
+    "lmdeploy": "0.14.0",
+    "torch": "2.11.0",
+    "transformers": "5.12.1"
+  },
+  "sglang_compatibility": {
+    "attention_backend": "triton",
+    "FLASHINFER_USE_CUDA_NORM": "1",
+    "LD_LIBRARY_PATH_addition": "/usr/local/nvidia/lib64",
+    "reason": "Tesla T4 uses compute capability 7.5 (SM75)"
+  }
+}

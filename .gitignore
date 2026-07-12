@@ -10,3 +10,8 @@ __pycache__/
 # Local model caches, logs and runtime files
 .cache/
 .run/
+
+# Local inference-engine benchmark overrides and verbose container logs
+deploy/inference_engines/benchmark.env
+data/experiments/inference_engines/preflight.json
+data/experiments/inference_engines/runs/*/logs/

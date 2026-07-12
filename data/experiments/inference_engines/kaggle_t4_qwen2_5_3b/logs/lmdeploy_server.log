@@ -1,0 +1,374 @@
+[TM][WARN][0712.17:29:29.498600][turbomind.cc:122] `max_context_token_num` is not set, default to 2048.
+Loading:   0%|          | 0/36 [00:00<?, ?it/s]Loading:   3%|▎         | 1/36 [00:00<00:07,  4.39it/s]Loading:   8%|▊         | 3/36 [00:00<00:03,  9.72it/s]Loading:  14%|█▍        | 5/36 [00:00<00:02, 12.38it/s]Loading:  19%|█▉        | 7/36 [00:00<00:02, 13.96it/s]Loading:  25%|██▌       | 9/36 [00:00<00:01, 14.84it/s]Loading:  31%|███       | 11/36 [00:00<00:01, 15.46it/s]Loading:  36%|███▌      | 13/36 [00:00<00:01, 15.88it/s]Loading:  42%|████▏     | 15/36 [00:01<00:01, 16.20it/s]Loading:  47%|████▋     | 17/36 [00:01<00:01, 16.42it/s]Loading:  53%|█████▎    | 19/36 [00:01<00:01, 16.44it/s]Loading:  58%|█████▊    | 21/36 [00:01<00:00, 16.60it/s]Loading:  64%|██████▍   | 23/36 [00:01<00:00, 13.49it/s]Loading:  69%|██████▉   | 25/36 [00:01<00:00, 14.34it/s]Loading:  75%|███████▌  | 27/36 [00:01<00:00, 15.03it/s]Loading:  81%|████████  | 29/36 [00:01<00:00, 15.54it/s]Loading:  86%|████████▌ | 31/36 [00:02<00:00, 15.90it/s]Loading:  92%|█████████▏| 33/36 [00:02<00:00, 16.16it/s]Loading:  97%|█████████▋| 35/36 [00:02<00:00, 16.36it/s]                                                        [TM][WARN][0712.17:29:33.084882][SequenceManager.cc:145] prefix caching is disabled
+[TM][WARN][0712.17:29:33.368386][engine.cc:525] ID 0: total sequence length (2048 + 1) exceeds `session_len` (2048), `max_new_tokens` is truncated to 0
+[TM][ERROR][0712.17:29:33.401820][turbomind.cc:415] Warm-up for 3072 tokens failed with status 6
+[TM][ERROR][0712.17:29:33.401951][turbomind.cc:415] Warm-up for 4096 tokens failed with status 6
+[TM][ERROR][0712.17:29:33.402037][turbomind.cc:415] Warm-up for 6144 tokens failed with status 6
+[TM][ERROR][0712.17:29:33.402110][turbomind.cc:415] Warm-up for 8192 tokens failed with status 6
+[TM][ERROR][0712.17:29:33.402182][turbomind.cc:415] Warm-up for 8208 tokens failed with status 6
+HINT:    Please open [93m[1mhttp://127.0.0.1:18000[0m in a browser for detailed api usage!!!
+HINT:    Please open [93m[1mhttp://127.0.0.1:18000[0m in a browser for detailed api usage!!!
+HINT:    Please open [93m[1mhttp://127.0.0.1:18000[0m in a browser for detailed api usage!!!
+INFO:     Started server process [2311]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:18000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:39818 - "GET /v1/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39822 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39834 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39848 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39852 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39870 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39886 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39888 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39854 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39904 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39912 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39930 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39942 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39958 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39972 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39926 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39974 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39976 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39982 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39996 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40002 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:29:43 DP0] Avg thr (in/out): 1017.9 / 150.8 tokens/s, Server (succeeded/failed/routed/waiting): 4 / 0 / 16 / 0, Engine (running/waiting): 16 / 0, KV cache: 5.6%, 
+INFO:     127.0.0.1:59784 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59784 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:29:53 DP0] Avg thr (in/out): 102.4 / 125.8 tokens/s, Server (succeeded/failed/routed/waiting): 21 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:59784 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59784 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:30:03 DP0] Avg thr (in/out): 102.4 / 26.7 tokens/s, Server (succeeded/failed/routed/waiting): 23 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:30:13 DP0] Avg thr (in/out): 102.4 / 25.2 tokens/s, Server (succeeded/failed/routed/waiting): 25 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:30:23 DP0] Avg thr (in/out): 102.4 / 25.9 tokens/s, Server (succeeded/failed/routed/waiting): 27 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:30:33 DP0] Avg thr (in/out): 102.4 / 27.5 tokens/s, Server (succeeded/failed/routed/waiting): 29 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:30:43 DP0] Avg thr (in/out): 153.6 / 27.8 tokens/s, Server (succeeded/failed/routed/waiting): 32 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.3%, 
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:30:53 DP0] Avg thr (in/out): 102.4 / 28.3 tokens/s, Server (succeeded/failed/routed/waiting): 34 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.3%, 
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:31:03 DP0] Avg thr (in/out): 102.4 / 28.4 tokens/s, Server (succeeded/failed/routed/waiting): 36 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:31:13 DP0] Avg thr (in/out): 102.4 / 27.6 tokens/s, Server (succeeded/failed/routed/waiting): 38 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:46256 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56454 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56458 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56468 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56470 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:31:23 DP0] Avg thr (in/out): 256.0 / 58.0 tokens/s, Server (succeeded/failed/routed/waiting): 40 / 0 / 4 / 0, Engine (running/waiting): 4 / 0, KV cache: 1.5%, 
+INFO:     127.0.0.1:56498 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56482 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56472 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56478 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56498 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56482 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56472 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56478 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56498 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56482 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56478 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56472 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:31:33 DP0] Avg thr (in/out): 460.8 / 112.8 tokens/s, Server (succeeded/failed/routed/waiting): 52 / 0 / 4 / 0, Engine (running/waiting): 4 / 0, KV cache: 1.3%, 
+INFO:     127.0.0.1:56498 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56482 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56478 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56472 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58462 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58446 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58472 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58486 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:31:43 DP0] Avg thr (in/out): 563.2 / 110.4 tokens/s, Server (succeeded/failed/routed/waiting): 60 / 0 / 4 / 0, Engine (running/waiting): 4 / 0, KV cache: 1.3%, 
+INFO:     127.0.0.1:58510 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58526 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58536 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58500 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58546 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58562 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58572 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58576 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58510 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58526 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58536 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58546 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58500 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58576 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58572 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58562 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:31:53 DP0] Avg thr (in/out): 819.2 / 153.3 tokens/s, Server (succeeded/failed/routed/waiting): 72 / 0 / 8 / 0, Engine (running/waiting): 8 / 0, KV cache: 2.7%, 
+INFO:     127.0.0.1:33312 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33302 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33312 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33302 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:32:03 DP0] Avg thr (in/out): 204.8 / 133.1 tokens/s, Server (succeeded/failed/routed/waiting): 82 / 0 / 2 / 0, Engine (running/waiting): 2 / 0, KV cache: 0.7%, 
+INFO:     127.0.0.1:39328 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39336 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39328 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39336 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39328 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39336 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:32:13 DP0] Avg thr (in/out): 204.7 / 63.9 tokens/s, Server (succeeded/failed/routed/waiting): 88 / 0 / 2 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.3%, 
+INFO:     127.0.0.1:39328 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39336 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39328 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39336 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:32:23 DP0] Avg thr (in/out): 307.2 / 61.7 tokens/s, Server (succeeded/failed/routed/waiting): 92 / 0 / 2 / 0, Engine (running/waiting): 2 / 0, KV cache: 0.7%, 
+INFO:     127.0.0.1:39328 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39336 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39328 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39336 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:32:33 DP0] Avg thr (in/out): 204.8 / 63.6 tokens/s, Server (succeeded/failed/routed/waiting): 96 / 0 / 2 / 0, Engine (running/waiting): 2 / 0, KV cache: 0.7%, 
+INFO:     127.0.0.1:39328 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39336 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50526 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50542 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50550 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50556 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34432 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34438 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34446 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34416 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34462 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34468 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34482 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34478 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:32:43 DP0] Avg thr (in/out): 409.6 / 79.8 tokens/s, Server (succeeded/failed/routed/waiting): 104 / 0 / 8 / 0, Engine (running/waiting): 8 / 0, KV cache: 2.6%, 
+INFO:     127.0.0.1:34432 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34438 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34468 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34416 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34462 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34446 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34482 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34478 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33848 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33862 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33868 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33884 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:32:53 DP0] Avg thr (in/out): 767.9 / 204.6 tokens/s, Server (succeeded/failed/routed/waiting): 120 / 0 / 4 / 0, Engine (running/waiting): 4 / 0, KV cache: 1.3%, 
+INFO:     127.0.0.1:33900 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33906 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33918 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33886 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33922 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33936 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33946 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33954 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33962 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33968 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33984 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33988 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34004 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34016 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34026 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34038 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:33:03 DP0] Avg thr (in/out): 972.8 / 211.2 tokens/s, Server (succeeded/failed/routed/waiting): 124 / 0 / 16 / 0, Engine (running/waiting): 16 / 0, KV cache: 6.0%, 
+INFO:     127.0.0.1:54908 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54918 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54934 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54942 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54978 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54950 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54962 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54964 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54978 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54950 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54962 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54964 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:33:13 DP0] Avg thr (in/out): 409.6 / 147.1 tokens/s, Server (succeeded/failed/routed/waiting): 148 / 0 / 4 / 0, Engine (running/waiting): 3 / 0, KV cache: 0.9%, 
+INFO:     127.0.0.1:54978 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54950 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54962 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54964 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54978 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54950 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54962 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54964 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:33:23 DP0] Avg thr (in/out): 614.4 / 110.8 tokens/s, Server (succeeded/failed/routed/waiting): 156 / 0 / 4 / 0, Engine (running/waiting): 4 / 0, KV cache: 1.3%, 
+INFO:     127.0.0.1:34070 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34086 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34070 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34086 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:33:33 DP0] Avg thr (in/out): 204.8 / 84.7 tokens/s, Server (succeeded/failed/routed/waiting): 162 / 0 / 2 / 0, Engine (running/waiting): 2 / 0, KV cache: 0.7%, 
+INFO:     127.0.0.1:39742 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39726 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39742 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39726 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39742 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39726 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:33:43 DP0] Avg thr (in/out): 307.2 / 61.4 tokens/s, Server (succeeded/failed/routed/waiting): 168 / 0 / 2 / 0, Engine (running/waiting): 2 / 0, KV cache: 0.7%, 
+INFO:     127.0.0.1:39742 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39726 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39742 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39726 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:33:53 DP0] Avg thr (in/out): 204.8 / 63.6 tokens/s, Server (succeeded/failed/routed/waiting): 172 / 0 / 2 / 0, Engine (running/waiting): 2 / 0, KV cache: 0.7%, 
+INFO:     127.0.0.1:39742 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39726 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39742 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39726 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39742 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:34:03 DP0] Avg thr (in/out): 204.7 / 63.4 tokens/s, Server (succeeded/failed/routed/waiting): 177 / 0 / 2 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:39726 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59518 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59518 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:34:13 DP0] Avg thr (in/out): 204.8 / 41.8 tokens/s, Server (succeeded/failed/routed/waiting): 181 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.3%, 
+INFO:     127.0.0.1:59518 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59518 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:34:23 DP0] Avg thr (in/out): 102.4 / 27.9 tokens/s, Server (succeeded/failed/routed/waiting): 183 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.3%, 
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:34:33 DP0] Avg thr (in/out): 102.4 / 27.9 tokens/s, Server (succeeded/failed/routed/waiting): 185 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:34:43 DP0] Avg thr (in/out): 102.4 / 27.7 tokens/s, Server (succeeded/failed/routed/waiting): 187 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:34:53 DP0] Avg thr (in/out): 102.4 / 27.7 tokens/s, Server (succeeded/failed/routed/waiting): 189 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:35:03 DP0] Avg thr (in/out): 153.6 / 27.1 tokens/s, Server (succeeded/failed/routed/waiting): 192 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.3%, 
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:35:13 DP0] Avg thr (in/out): 102.4 / 27.4 tokens/s, Server (succeeded/failed/routed/waiting): 194 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.3%, 
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:35:23 DP0] Avg thr (in/out): 102.4 / 27.3 tokens/s, Server (succeeded/failed/routed/waiting): 196 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.3%, 
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:35:33 DP0] Avg thr (in/out): 102.4 / 27.3 tokens/s, Server (succeeded/failed/routed/waiting): 198 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.3%, 
+INFO:     127.0.0.1:60976 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37398 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37400 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37404 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37414 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:35:43 DP0] Avg thr (in/out): 256.0 / 50.1 tokens/s, Server (succeeded/failed/routed/waiting): 200 / 0 / 4 / 0, Engine (running/waiting): 4 / 0, KV cache: 1.5%, 
+INFO:     127.0.0.1:37432 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37438 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37448 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37424 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37460 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37468 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37486 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37482 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37432 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37438 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37460 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37424 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37448 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37468 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37486 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37482 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:35:53 DP0] Avg thr (in/out): 819.1 / 172.0 tokens/s, Server (succeeded/failed/routed/waiting): 212 / 0 / 8 / 0, Engine (running/waiting): 8 / 0, KV cache: 2.7%, 
+INFO:     127.0.0.1:56094 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56102 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56110 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56122 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56088 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56124 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56104 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56114 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:36:03 DP0] Avg thr (in/out): 409.6 / 141.5 tokens/s, Server (succeeded/failed/routed/waiting): 224 / 0 / 4 / 0, Engine (running/waiting): 4 / 0, KV cache: 1.5%, 
+INFO:     127.0.0.1:56088 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56104 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56124 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56114 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56088 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56124 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56104 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56114 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56088 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56124 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56104 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56114 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:36:13 DP0] Avg thr (in/out): 409.5 / 116.8 tokens/s, Server (succeeded/failed/routed/waiting): 236 / 0 / 4 / 0, Engine (running/waiting): 3 / 0, KV cache: 0.9%, 
+INFO:     127.0.0.1:42374 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42380 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42394 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42408 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34888 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34904 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34914 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34874 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34928 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34948 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34964 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34976 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34984 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34988 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34938 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35002 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35018 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35022 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35026 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35042 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:36:23 DP0] Avg thr (in/out): 665.6 / 103.1 tokens/s, Server (succeeded/failed/routed/waiting): 244 / 0 / 16 / 0, Engine (running/waiting): 13 / 3, KV cache: 4.2%, 
+INFO:     127.0.0.1:35056 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35066 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35056 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35066 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:36:33 DP0] Avg thr (in/out): 665.6 / 229.7 tokens/s, Server (succeeded/failed/routed/waiting): 262 / 0 / 2 / 0, Engine (running/waiting): 2 / 0, KV cache: 0.6%, 
+INFO:     127.0.0.1:52264 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52280 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52264 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52280 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:36:43 DP0] Avg thr (in/out): 307.2 / 62.7 tokens/s, Server (succeeded/failed/routed/waiting): 266 / 0 / 2 / 0, Engine (running/waiting): 2 / 0, KV cache: 0.7%, 
+INFO:     127.0.0.1:52264 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52280 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52264 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52280 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:36:53 DP0] Avg thr (in/out): 204.8 / 63.6 tokens/s, Server (succeeded/failed/routed/waiting): 270 / 0 / 2 / 0, Engine (running/waiting): 2 / 0, KV cache: 0.7%, 
+INFO:     127.0.0.1:52264 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52280 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52264 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52280 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52264 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52280 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:37:03 DP0] Avg thr (in/out): 307.2 / 61.4 tokens/s, Server (succeeded/failed/routed/waiting): 276 / 0 / 2 / 0, Engine (running/waiting): 2 / 0, KV cache: 0.7%, 
+INFO:     127.0.0.1:52264 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52280 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51144 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:37:13 DP0] Avg thr (in/out): 153.6 / 51.9 tokens/s, Server (succeeded/failed/routed/waiting): 280 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:51144 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51144 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:37:23 DP0] Avg thr (in/out): 102.4 / 27.9 tokens/s, Server (succeeded/failed/routed/waiting): 282 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:51144 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:37:33 DP0] Avg thr (in/out): 153.6 / 27.3 tokens/s, Server (succeeded/failed/routed/waiting): 285 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.3%, 
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:37:43 DP0] Avg thr (in/out): 102.4 / 27.7 tokens/s, Server (succeeded/failed/routed/waiting): 287 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.3%, 
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:37:53 DP0] Avg thr (in/out): 102.4 / 27.8 tokens/s, Server (succeeded/failed/routed/waiting): 289 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.3%, 
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:38:03 DP0] Avg thr (in/out): 102.4 / 27.7 tokens/s, Server (succeeded/failed/routed/waiting): 291 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:38:13 DP0] Avg thr (in/out): 102.4 / 27.7 tokens/s, Server (succeeded/failed/routed/waiting): 293 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:38:23 DP0] Avg thr (in/out): 102.4 / 27.7 tokens/s, Server (succeeded/failed/routed/waiting): 295 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.4%, 
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+[2026-07-12 17:38:33 DP0] Avg thr (in/out): 102.4 / 27.4 tokens/s, Server (succeeded/failed/routed/waiting): 298 / 0 / 1 / 0, Engine (running/waiting): 1 / 0, KV cache: 0.3%, 
+INFO:     127.0.0.1:51056 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2311]

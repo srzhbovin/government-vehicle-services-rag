@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import html
 import os
+import re
 from typing import Any
+from urllib.parse import urlparse
 
 import gradio as gr
 import httpx
@@ -15,6 +17,8 @@ load_dotenv()
 
 BACKEND_URL = os.getenv("RAG_BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
 REQUEST_TIMEOUT = float(os.getenv("RAG_FRONTEND_TIMEOUT_SECONDS", "240"))
+MAX_CHAT_MESSAGES = 20
+MAX_CHAT_MESSAGE_CHARS = 4000
 
 LANGUAGE_BY_LABEL = {
     "Автоматически": "auto",
@@ -194,7 +198,8 @@ def retrieve_backend(
 
 def chat_backend(
     message: str,
-    history: list[dict[str, str]] | None,
+    display_history: list[dict[str, str]] | None,
+    clean_history: list[dict[str, str]] | None,
     language_label: str,
     top_k: int,
     context_window: int,
@@ -205,17 +210,36 @@ def chat_backend(
     max_output_tokens: int,
     use_judge: bool,
     use_adaptive_context: bool,
-) -> tuple[list[dict[str, str]], str, str, str, str, list[list[Any]], str]:
+) -> tuple[
+    list[dict[str, str]],
+    list[dict[str, str]],
+    str,
+    str,
+    str,
+    str,
+    list[list[Any]],
+    str,
+]:
     message = message.strip()
-    history = history or []
+    display_history = list(display_history or [])
+    clean_history = list(clean_history or [])
     if not message:
-        return history, "", "Введите сообщение.", "", "", [], format_status()
+        return (
+            display_history,
+            clean_history,
+            "",
+            "Введите сообщение.",
+            "",
+            "",
+            [],
+            format_status(),
+        )
 
     messages = [
         {"role": item["role"], "content": item["content"]}
-        for item in history
+        for item in clean_history
         if item.get("role") in {"user", "assistant"} and item.get("content")
-    ]
+    ][-(MAX_CHAT_MESSAGES - 2) :]
     messages.append({"role": "user", "content": message})
 
     payload = {
@@ -232,19 +256,42 @@ def chat_backend(
         "use_adaptive_context": bool(use_adaptive_context),
     }
 
-    history.append({"role": "user", "content": message})
+    updated_display_history = [
+        *display_history,
+        {"role": "user", "content": message},
+    ][-(MAX_CHAT_MESSAGES - 1) :]
     try:
         result = post_json("/api/v1/chat", payload)
     except RuntimeError as error:
-        history.append({"role": "assistant", "content": f"Ошибка backend: {error}"})
-        return history, "", "", "", "", [], format_status()
+        updated_display_history.append(
+            {"role": "assistant", "content": f"Ошибка backend: {error}"}
+        )
+        updated_display_history = updated_display_history[-MAX_CHAT_MESSAGES:]
+        return (
+            updated_display_history,
+            clean_history,
+            "",
+            "",
+            "",
+            "",
+            [],
+            format_status(),
+        )
 
-    history.append(
+    updated_display_history.append(
         {
             "role": "assistant",
             "content": format_chat_answer(result),
         }
     )
+    updated_display_history = updated_display_history[-MAX_CHAT_MESSAGES:]
+    updated_clean_history = [
+        *messages,
+        {
+            "role": "assistant",
+            "content": shorten(result["answer"], MAX_CHAT_MESSAGE_CHARS),
+        },
+    ]
     metadata = format_metadata(result)
     if result.get("standalone_question"):
         metadata += (
@@ -253,7 +300,8 @@ def chat_backend(
             f"- History messages used: `{result.get('history_messages', 0)}`"
         )
     return (
-        history,
+        updated_display_history,
+        updated_clean_history,
         "",
         metadata,
         format_guardrail(result),
@@ -424,13 +472,27 @@ def format_chat_sources(result: dict[str, Any], max_sources: int = 3) -> str:
     if not sources:
         return ""
 
+    cited_ranks = {
+        int(value)
+        for value in re.findall(r"\[(\d+)\]", str(result.get("answer") or ""))
+    }
+    visible_ranks = cited_ranks | {
+        int(source["rank"]) for source in sources[:max_sources]
+    }
     details = ["**Источники ответа:**"]
-    for source in sources[:max_sources]:
+    for source in sources:
         rank = int(source["rank"])
+        if rank not in visible_ranks:
+            continue
         title = escape_md(source.get("title") or source["document_id"])
         score = float(source["score"])
-        url = source.get("source_url")
-        url_text = f" · [документ]({url})" if url else ""
+        url = safe_source_url(source.get("source_url"))
+        url_text = (
+            f' · <a href="{html.escape(url, quote=True)}" target="_blank" '
+            'rel="noopener noreferrer">документ</a>'
+            if url
+            else ""
+        )
         text = escape_md(shorten(source["text"], 520))
         details.append(
             f"<details><summary>[{rank}] {title} · score {score:.3f}{url_text}</summary>\n\n"
@@ -447,9 +509,10 @@ def source_card(source: dict[str, Any]) -> str:
     document_id = html.escape(str(source["document_id"]))
     chunk_id = html.escape(str(source["chunk_id"]))
     score = float(source["score"])
-    source_url = source.get("source_url")
+    source_url = safe_source_url(source.get("source_url"))
     url_html = (
-        f'<a href="{html.escape(source_url)}" target="_blank">открыть документ</a>'
+        f'<a href="{html.escape(source_url, quote=True)}" target="_blank" '
+        'rel="noopener noreferrer">открыть документ</a>'
         if source_url
         else "URL отсутствует в текущем корпусе"
     )
@@ -478,6 +541,16 @@ def escape_md(value: Any) -> str:
     return html.escape(str(value or ""))
 
 
+def safe_source_url(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    candidate = value.strip()
+    parsed = urlparse(candidate)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    return candidate
+
+
 EXAMPLES = [
     "What should I do if I lost my driver license?",
     "How can I renew my vehicle registration?",
@@ -499,6 +572,7 @@ with gr.Blocks(
     title="DMV RAG Assistant",
     theme=gr.themes.Soft(),
     css=APP_CSS,
+    analytics_enabled=False,
 ) as demo:
     gr.Markdown(
         """
@@ -602,7 +676,15 @@ with gr.Blocks(
     with gr.Accordion("Источники и найденные фрагменты", open=True):
         source_cards_box = gr.Markdown()
         sources_table = gr.Dataframe(
-            headers=["#", "Документ", "Document ID", "Chunk ID", "Score", "URL", "Фрагмент"],
+            headers=[
+                "#",
+                "Документ",
+                "Document ID",
+                "Chunk ID",
+                "Score",
+                "URL",
+                "Фрагмент",
+            ],
             datatype=["number", "str", "str", "str", "number", "str", "str"],
             label="Таблица retrieval",
             wrap=True,
@@ -621,12 +703,15 @@ with gr.Blocks(
         type="messages",
         height=420,
         show_copy_button=True,
+        allow_tags=False,
     )
+    chat_state = gr.State([])
     with gr.Row():
         chat_input = gr.Textbox(
             label="Сообщение в Chat RAG",
             placeholder="Например: I lost my driver license. What should I do?",
             lines=2,
+            max_length=MAX_CHAT_MESSAGE_CHARS,
             scale=4,
         )
         chat_button = gr.Button("Отправить", variant="primary", scale=1)
@@ -673,6 +758,7 @@ with gr.Blocks(
         inputs=[
             chat_input,
             chat_box,
+            chat_state,
             language_box,
             top_k_slider,
             context_window_slider,
@@ -686,6 +772,7 @@ with gr.Blocks(
         ],
         outputs=[
             chat_box,
+            chat_state,
             chat_input,
             metadata_box,
             guardrail_box,
@@ -699,6 +786,7 @@ with gr.Blocks(
         inputs=[
             chat_input,
             chat_box,
+            chat_state,
             language_box,
             top_k_slider,
             context_window_slider,
@@ -712,6 +800,7 @@ with gr.Blocks(
         ],
         outputs=[
             chat_box,
+            chat_state,
             chat_input,
             metadata_box,
             guardrail_box,
@@ -721,8 +810,16 @@ with gr.Blocks(
         ],
     )
     clear_chat_button.click(
-        lambda: ([], "", "", "", []),
-        outputs=[chat_box, metadata_box, guardrail_box, source_cards_box, sources_table],
+        lambda: ([], [], "", "", "", "", []),
+        outputs=[
+            chat_box,
+            chat_state,
+            chat_input,
+            metadata_box,
+            guardrail_box,
+            source_cards_box,
+            sources_table,
+        ],
     )
     refresh_button.click(format_status, outputs=status_box)
 

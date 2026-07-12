@@ -1,0 +1,83 @@
+{
+  "generated_at": "2026-07-12T18:46:20.909017+00:00",
+  "status": "complete",
+  "run_dir": "C:\\Users\\Sergey\\Desktop\\government_vehicle_services_rag\\RAG\\data\\experiments\\inference_engines\\kaggle_t4_qwen2_5_3b",
+  "configuration": {
+    "engines": [
+      "sglang",
+      "vllm",
+      "lmdeploy"
+    ],
+    "batch_sizes": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "repeats": 3,
+    "num_prompts": 16,
+    "bootstrap_samples": 3000,
+    "bootstrap_seed": 42,
+    "bootstrap_statistic": "median",
+    "telemetry_required": true
+  },
+  "validation": {
+    "status": "complete",
+    "expected_runs": 45,
+    "raw_records": 45,
+    "unique_raw_runs": 45,
+    "telemetry_records": 45,
+    "unique_telemetry_runs": 45,
+    "missing_raw_runs": [],
+    "duplicate_raw_runs": [],
+    "unexpected_raw_runs": [],
+    "missing_telemetry_runs": [],
+    "duplicate_telemetry_runs": [],
+    "unexpected_telemetry_runs": [],
+    "invalid_run_data": [],
+    "raw_issues": [],
+    "telemetry_issues": [],
+    "telemetry_required": true
+  },
+  "runner_metadata": {
+    "EXPERIMENT_PLATFORM": "Kaggle",
+    "WORKLOAD": "rag-shared-prefix-exact-512",
+    "SELECTED_ENGINE": "lmdeploy",
+    "MODEL_ID": "Qwen/Qwen2.5-3B-Instruct",
+    "MODEL_REVISION": "aa8e72537993ba99e69dfaafa59ed015b17504d1",
+    "ENGINES": "sglang,vllm,lmdeploy",
+    "BATCH_SIZES": "1,2,4,8,16",
+    "REPEATS": "3",
+    "NUM_PROMPTS": "16",
+    "WARMUP_PROMPTS": "4",
+    "INPUT_TOKENS": "512",
+    "OUTPUT_TOKENS": "128",
+    "TEMPERATURE": "0.0",
+    "TOP_P": "1.0",
+    "GENERATION_SEED": "none",
+    "IGNORE_EOS": "false",
+    "GPU_INDEX": "0",
+    "GPU_NAME": "Tesla T4",
+    "GPU_MEMORY_MIB": "15360",
+    "GPU_DRIVER_VERSION": "580.159.04",
+    "GPU_COMPUTE_CAPABILITY": "7.5",
+    "PROMPT_FILE_SHA256": "7f4c29ab0e3d9c965a32cd1aaabd80a94c87f45b842abc79d707f51607a076df",
+    "SGLANG_VERSION": "0.5.15",
+    "VLLM_VERSION": "0.25.0",
+    "LMDEPLOY_VERSION": "0.14.0",
+    "SGLANG_ATTENTION_BACKEND": "triton",
+    "SGLANG_FLASHINFER_USE_CUDA_NORM": "1"
+  },
+  "artifacts": {
+    "summary_csv": "C:\\Users\\Sergey\\Desktop\\government_vehicle_services_rag\\RAG\\data\\experiments\\inference_engines\\kaggle_t4_qwen2_5_3b\\summary.csv",
+    "summary_json": "C:\\Users\\Sergey\\Desktop\\government_vehicle_services_rag\\RAG\\data\\experiments\\inference_engines\\kaggle_t4_qwen2_5_3b\\summary.json",
+    "report": "C:\\Users\\Sergey\\Desktop\\government_vehicle_services_rag\\RAG\\reports\\inference_engine_comparison.md",
+    "plots": [
+      "C:\\Users\\Sergey\\Desktop\\government_vehicle_services_rag\\RAG\\data\\experiments\\inference_engines\\kaggle_t4_qwen2_5_3b\\plots\\throughput_vs_batch.svg",
+      "C:\\Users\\Sergey\\Desktop\\government_vehicle_services_rag\\RAG\\data\\experiments\\inference_engines\\kaggle_t4_qwen2_5_3b\\plots\\p95_ttft_vs_batch.svg",
+      "C:\\Users\\Sergey\\Desktop\\government_vehicle_services_rag\\RAG\\data\\experiments\\inference_engines\\kaggle_t4_qwen2_5_3b\\plots\\p95_e2e_vs_batch.svg",
+      "C:\\Users\\Sergey\\Desktop\\government_vehicle_services_rag\\RAG\\data\\experiments\\inference_engines\\kaggle_t4_qwen2_5_3b\\plots\\peak_vram_vs_batch.svg"
+    ]
+  }
+}
