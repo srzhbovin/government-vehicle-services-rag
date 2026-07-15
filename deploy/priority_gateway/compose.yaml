@@ -1,0 +1,46 @@
+services:
+  priority-gateway:
+    build:
+      context: ../..
+      dockerfile: deploy/priority_gateway/Dockerfile
+    ports:
+      - "${PRIORITY_GATEWAY_PORT:-4000}:8080"
+    environment:
+      PRIORITY_GATEWAY_CONFIG: /app/config/priorities.yaml
+      LITELLM_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-litellm-local}
+      PRIORITY_CRITICAL_API_KEY: ${PRIORITY_CRITICAL_API_KEY:-sk-critical-local}
+      PRIORITY_BATCH_API_KEY: ${PRIORITY_BATCH_API_KEY:-sk-batch-local}
+      PRIORITY_STANDARD_API_KEY: ${PRIORITY_STANDARD_API_KEY:-sk-standard-local}
+    volumes:
+      - ./priorities.yaml:/app/config/priorities.yaml:ro
+    depends_on:
+      litellm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  litellm:
+    image: ghcr.io/berriai/litellm:v1.89.0
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-litellm-local}
+      LITELLM_MODEL_ID: ${LITELLM_MODEL_ID:-openai/qwen2.5-3b-instruct}
+      LITELLM_UPSTREAM_BASE_URL: ${LITELLM_UPSTREAM_BASE_URL:-http://host.docker.internal:18000/v1}
+      LITELLM_UPSTREAM_API_KEY: ${LITELLM_UPSTREAM_API_KEY:-local}
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    expose:
+      - "4000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness')"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped

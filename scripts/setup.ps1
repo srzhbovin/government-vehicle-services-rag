@@ -1,3 +1,7 @@
+param(
+    [switch]$Dev
+)
+
 $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $Python = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
@@ -15,6 +19,12 @@ if ($LASTEXITCODE -ne 0) {
 & $Python -m pip install -r requirements.txt
 if ($LASTEXITCODE -ne 0) {
     throw "Dependency installation failed."
+}
+if ($Dev) {
+    & $Python -m pip install -r requirements-dev.txt
+    if ($LASTEXITCODE -ne 0) {
+        throw "Development dependency installation failed."
+    }
 }
 
 $EnvPath = Join-Path $ProjectRoot ".env"

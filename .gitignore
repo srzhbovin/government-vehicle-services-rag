@@ -15,3 +15,8 @@ __pycache__/
 deploy/inference_engines/benchmark.env
 data/experiments/inference_engines/preflight.json
 data/experiments/inference_engines/runs/*/logs/
+
+# Rebuilt by the embedding-model benchmark; keep compact summaries in Git
+data/experiments/embedding_models/*/retrieval_per_query.jsonl
+data/experiments/embedding_models/*/index/chunk_embeddings.npy
+data/experiments/embedding_models/*/index/faiss_flat.index

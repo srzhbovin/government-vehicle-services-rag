@@ -2,7 +2,7 @@
 
 Проект реализует RAG-систему по документам DMV из MultiDoc2Dial. Система ищет релевантные фрагменты документов, передаёт их в LLM и возвращает ответ с источниками.
 
-Текущая версия — полноценный исследовательский RAG-прототип: есть backend на FastAPI, интерфейс на Gradio, гибридный retrieval, structured output, диалоговая история, настройка параметров генерации и защита от галлюцинаций через LLM-as-a-judge.
+Текущая версия — полноценный исследовательский RAG-прототип: есть backend на FastAPI, интерфейс на Gradio, гибридный retrieval, structured output, диалоговая история, настройка параметров генерации, защита от галлюцинаций через LLM-as-a-judge и priority gateway перед LiteLLM.
 
 ## Что сейчас входит в пайплайн
 
@@ -22,6 +22,7 @@
 14. Адаптивный повтор с расширенным контекстом, если первый ответ не прошёл проверку.
 15. FastAPI отдаёт результат в API.
 16. Gradio показывает ответ, параметры, judge-вердикт, найденные фрагменты и поддерживает Chat RAG.
+17. При локальном LLM-запуске priority gateway распределяет ограниченные слоты между группами пользователей до передачи запросов в LiteLLM.
 
 ## Что изменено в последней итерации
 
@@ -119,7 +120,37 @@ Streamlit-интерфейс заменён на Gradio. В интерфейсе
 
 ### Исследование инференс-движков
 
-Для шага 17 добавлен воспроизводимый стенд сравнения SGLang, vLLM и LMDeploy на одной модели и одной NVIDIA GPU. Подготовлены контейнеры, RAG-like workload, sweep по concurrency, GPU-телеметрия, проверка полноты raw-данных, агрегация и графики. Числовой итог появится только после реального Linux/CUDA-прогона; локальная Intel Iris Xe для честного сравнения этих CUDA-движков не подходит.
+Для шага 17 добавлен воспроизводимый стенд сравнения SGLang, vLLM и LMDeploy на одной модели и одной NVIDIA GPU. Финальный прогон выполнен на Kaggle с Tesla T4: протестированы три движка, пять размеров батча и три повтора. На этой конфигурации лучшим оказался LMDeploy/TurboMind.
+
+### Балансировка и приоритизация перед LiteLLM
+
+Для шага 18 реализован отдельный OpenAI-compatible gateway перед LiteLLM. Он определяет группу по уже выданному API-ключу, ограничивает число одновременных генераций и выбирает следующий запрос через priority queue with aging. Жёсткий starvation timeout гарантирует, что фоновый запрос не останется в очереди навсегда. Правила лежат в YAML и меняются без доработки Gradio, RAG backend или других клиентов.
+
+В контролируемом сравнении FIFO и priority+aging выполнено 1080 запросов при 1, 2, 4 и 8 слотах. В финальном прогоне ожидание запросов `critical` уменьшилось на 80.7–91.6%, а максимальная разница общей пропускной способности составила 1.06%. Полная методика и ограничения приведены в `reports/priority_scheduling.md`.
+
+## Соответствие этапам технического задания
+
+| Этап | Что получено | Где находится вывод |
+|---:|---|---|
+| 1 | Теоретическая база применена при выборе архитектуры и метрик | этот README и отчёты ниже |
+| 2 | Сравнены MiniLM и MPNet на одинаковом точном FAISS-поиске | `reports/embedding_model_comparison.md` |
+| 3 | Сравнены полный, безопасно сокращённый и агрессивно сокращённый корпус | `reports/audit_steps_1_5.md` |
+| 4 | Сравнены 35 конфигураций character, recursive, token и semantic-lite chunking | `reports/chunking_comparison.md` |
+| 5 | Сравнены Flat, IVF и HNSW | `reports/faiss_comparison.md` |
+| 6 | Сравнены cosine, BM25, FAISS, hybrid и hybrid + reranker | `reports/retrieval_comparison.md` |
+| 7 | Собран рабочий сквозной RAG | `reports/rag_baseline.md` |
+| 8 | Сравнены четыре стратегии промптинга, выбран Structured Output | `reports/prompt_engineering.md` |
+| 9–10 | Посчитаны retrieval/generation-метрики и систематизированы ошибки | `reports/rag_quality.md` |
+| 11 | Сохранена последовательная история изменений | Git log репозитория |
+| 12 | Архитектура, команды, таблицы и ограничения сведены в документацию | этот README и каталог `reports/` |
+| 13 | Исследованы 255 стратегий формирования контекста | `reports/context_strategy_comparison.md` |
+| 14 | Сравнены восемь LLM при одинаковом retrieval-контексте | `reports/llm_model_comparison.md` |
+| 15 | Сравнены механизмы отказа от ответа | `reports/refusal_mechanisms.md` |
+| 16 | Реализован Chat RAG с разрешением коротких follow-up вопросов | раздел `Chat RAG` ниже |
+| 17 | Сравнены SGLang, vLLM и LMDeploy на Tesla T4 | `reports/inference_engine_comparison.md` |
+| 18 | Реализована очередь перед LiteLLM и исследована приоритизация | `reports/priority_scheduling.md` |
+
+В каждом указанном отчёте отделены методика, численные результаты, выбранное решение и ограничения. Сгенерированные CSV, JSON/JSONL и графики находятся в `data/experiments/`.
 
 ## Быстрый запуск
 
@@ -129,6 +160,14 @@ Streamlit-интерфейс заменён на Gradio. В интерфейсе
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/setup.ps1
+```
+
+Для разработки и запуска автоматических проверок установите также тестовые инструменты:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Dev
+python -m pytest -q
+python -m ruff check src tests gradio_app.py load_documents.py chunk_documents.py
 ```
 
 Если `.env` ещё нет, скрипт создаст его из `.env.example`. После этого нужно заполнить:
@@ -265,6 +304,62 @@ bash scripts/inference_engines/run_benchmark.sh all
 
 В online serving SGLang, vLLM и LMDeploy используют continuous batching. Поэтому `batch size` в этом эксперименте определяется как максимальное число одновременно выполняемых запросов (`max_concurrency`), а не как статическая матрица, один раз переданная модели.
 
+## Запуск Priority Gateway и LiteLLM
+
+Этот вариант нужен для локального или серверного LLM-контура. Сначала должен быть запущен OpenAI-compatible inference endpoint, например выбранный на шаге 17 LMDeploy на `http://127.0.0.1:18000/v1`.
+
+Создайте локальную конфигурацию и замените тестовые секреты:
+
+```powershell
+Copy-Item deploy/priority_gateway/.env.example deploy/priority_gateway/.env
+notepad deploy/priority_gateway/.env
+```
+
+Поднимите gateway и LiteLLM:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_priority_stack.ps1
+```
+
+Снаружи открывается только priority gateway: `http://127.0.0.1:4000`. LiteLLM остаётся внутри Docker-сети. Проверка состояния:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:4000/health
+```
+
+Чтобы основной RAG ходил через новый контур, укажите в корневом `.env` ключ нужной группы:
+
+```env
+RAG_LLM_PROVIDER=litellm
+LOCAL_LLM_BASE_URL=http://127.0.0.1:4000/v1
+LOCAL_LLM_MODEL=dmv-rag
+LOCAL_LLM_API_KEY=sk-critical-change-me
+```
+
+Правила находятся в `deploy/priority_gateway/priorities.yaml`. Изменение ключей, сопоставления групп и числовых приоритетов не требует изменения клиентского кода. Не добавляйте реальные секреты в этот YAML: для них предусмотрены переменные окружения.
+
+Контролируемый эксперимент FIFO против priority+aging запускается отдельно и не требует Docker или LLM:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_priority_experiment.ps1
+```
+
+Результаты сохраняются в `data/experiments/priority_gateway/baseline/`, подробный разбор — в `reports/priority_scheduling.md`.
+
+Дополнительный Token-Aware эксперимент сравнивает распределение запросов между тремя репликами по количеству запросов и по ожидаемой токенной стоимости:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_token_routing_experiment.ps1
+```
+
+Команда собирает компактный Docker-образ, запускает пять стратегий для двух сценариев нагрузки и сохраняет CSV, JSON и SVG-графики в `data/experiments/priority_gateway/token_aware/`. Для запуска без Docker добавьте параметр `-Local`.
+
+Остановка стека:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/stop_priority_stack.ps1
+```
+
 ## Основные настройки `.env`
 
 ```env
@@ -301,6 +396,27 @@ RAG_JUDGE_MAX_OUTPUT_TOKENS=500
 ```
 
 ## Результаты экспериментов
+
+### Embedding models
+
+На одинаковых 1152 чанках и 1132 validation-вопросах сравнивались
+`all-MiniLM-L6-v2` и `all-mpnet-base-v2`. Для обеих моделей использовались
+нормализованные векторы и точный `FAISS IndexFlatIP`.
+
+| Модель | Размерность | Построение, мс | Поиск, мс/запрос | Recall@5 | MRR@10 |
+|---|---:|---:|---:|---:|---:|
+| `all-MiniLM-L6-v2` | 384 | 68330.8 | 7.949 | 0.5230 | 0.4010 |
+| `all-mpnet-base-v2` | 768 | 545944.3 | 54.726 | 0.5009 | 0.3816 |
+
+Для текущего корпуса сохранена `all-MiniLM-L6-v2`: она показала лучшее качество и одновременно оказалась существенно дешевле. Эксперимент воспроизводится командой:
+
+```powershell
+python -m src.rag_pipeline.compare_embedding_models
+```
+
+Подробности находятся в `reports/embedding_model_comparison.md`. Крупные экспериментальные
+эмбеддинги, FAISS-индексы и per-query строки пересоздаются командой выше и не хранятся в Git;
+сводные CSV/JSON и метаданные входят в репозиторий.
 
 ### Retrieval methods
 
@@ -578,3 +694,44 @@ LOCAL_LLM_API_KEY=local
 
 Генератор и LLM-as-a-Judge используют один OpenAI-compatible endpoint. Если для judge требуется более сильная модель, его можно временно отключить через `RAG_ENABLE_JUDGE=false` или поднять отдельный endpoint в следующей итерации.
 
+### Priority scheduling benchmark
+
+Для шага 18 сравнивались обычная FIFO-очередь и priority queue with aging. В каждом прогоне одновременно поступали 45 запросов: 9 `critical`, 21 `standard` и 15 `batch`. Downstream обрабатывал каждый запрос за фиксированные 100 ms, чтобы измерение не зависело от сети или случайной длины генерации. Для каждого режима использованы три повтора.
+
+| Slots | Critical FIFO, ms | Critical priority, ms | Изменение | FIFO throughput, req/s | Priority throughput, req/s |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 2257.8 | 436.3 | -80.7% | 9.186 | 9.283 |
+| 2 | 1082.2 | 207.6 | -80.8% | 18.028 | 18.009 |
+| 4 | 564.5 | 87.4 | -84.5% | 34.674 | 34.585 |
+| 8 | 264.4 | 22.2 | -91.6% | 69.278 | 69.220 |
+
+Приоритетный scheduler существенно сокращает очередь для интерактивной группы, почти не меняя суммарный throughput: максимальная разница составила 1.06%. Ускорение `critical` достигается за счёт более поздней обработки `batch`, а aging не позволяет низкоприоритетным запросам ждать бесконечно. Абсолютные миллисекунды могут немного меняться между запусками из-за планировщика ОС; устойчивый результат эксперимента — направление и порядок эффекта.
+
+Для текущего прототипа выбрана стартовая конфигурация с четырьмя слотами. Это не универсальный лимит для любой GPU: в реальной среде `max_concurrency` нужно подобрать повторным прогоном через LiteLLM и выбранную модель. Полный отчёт, p95-метрики, ограничения и схема размещения находятся в `reports/priority_scheduling.md`.
+
+### Token-Aware routing benchmark
+
+Дополнительно исследовано распределение запросов между тремя LLM-репликами. Сравнивались Round Robin, Least Requests, оценка по `max_tokens`, оценка будущего ответа через исторический EWMA и контрольный вариант с заранее известной фактической длиной ответа.
+
+Модель стоимости учитывает различную цену prefill и decode:
+
+```text
+estimated_service = input_tokens / prefill_speed
+                  + expected_output_tokens / decode_speed
+```
+
+В score реплики также входят уже назначенная токенная работа, размер очереди и оценка заполнения KV-cache. Проверены burst 12, 36, 72 и 144 запроса, по пять повторов. В сценарии остаточной нагрузки реплики начинали с 15 000, 4 000 и 9 000 незавершённых токенов.
+
+Результат для burst=144:
+
+| Стратегия | p95 E2E, ms | Makespan, ms | Throughput, req/s | Load CV |
+|---|---:|---:|---:|---:|
+| Round Robin | 93823.6 | 102825.7 | 1.403 | 0.2063 |
+| Least Requests | 93823.6 | 102825.7 | 1.403 | 0.2063 |
+| Token-Aware max | 83871.8 | 93025.1 | 1.550 | 0.1212 |
+| Token-Aware EWMA | 77509.5 | 84216.3 | 1.711 | 0.0362 |
+| Exact-estimate control | 78001.7 | 81512.6 | 1.768 | 0.0080 |
+
+Token-Aware EWMA снизил p95 на 17.39%, уменьшил makespan на 18.10%, увеличил throughput на 21.94% и снизил дисбаланс между репликами на 82.45%. Оценка через `max_tokens` оказалась слишком консервативной: WAPE составил 223.4% против 29.3% у EWMA.
+
+EWMA выбран как лучший практически применимый вариант для будущего multi-replica deployment. В текущем однорепличном запуске он не включён: сначала нужны несколько реальных LiteLLM-инстансов и калибровка коэффициентов по их телеметрии. Полный разбор и графики находятся в `reports/priority_scheduling.md`.

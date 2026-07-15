@@ -1,0 +1,10 @@
+{
+  "created_at_utc": "2026-07-15T14:09:37.800294+00:00",
+  "selection_split": "validation",
+  "selection_rule": "Recall@5, then MRR@10, then search latency",
+  "selected_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "models": [
+    "sentence-transformers/all-MiniLM-L6-v2",
+    "sentence-transformers/all-mpnet-base-v2"
+  ]
+}

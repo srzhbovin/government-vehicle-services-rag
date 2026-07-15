@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="520">
+<rect width="100%" height="100%" fill="white"/>
+<text x="460.0" y="28" text-anchor="middle" font-family="sans-serif" font-size="20">p95 latency — empty_pool</text>
+<line x1="90" y1="55" x2="90" y2="445" stroke="#334155"/>
+<line x1="90" y1="445" x2="890" y2="445" stroke="#334155"/>
+<line x1="90" y1="445.0" x2="890" y2="445.0" stroke="#e2e8f0"/>
+<text x="82" y="449.0" text-anchor="end" font-family="sans-serif" font-size="11">0.0</text>
+<line x1="90" y1="367.0" x2="890" y2="367.0" stroke="#e2e8f0"/>
+<text x="82" y="371.0" text-anchor="end" font-family="sans-serif" font-size="11">10343.7</text>
+<line x1="90" y1="289.0" x2="890" y2="289.0" stroke="#e2e8f0"/>
+<text x="82" y="293.0" text-anchor="end" font-family="sans-serif" font-size="11">20687.3</text>
+<line x1="90" y1="211.0" x2="890" y2="211.0" stroke="#e2e8f0"/>
+<text x="82" y="215.0" text-anchor="end" font-family="sans-serif" font-size="11">31031.0</text>
+<line x1="90" y1="133.0" x2="890" y2="133.0" stroke="#e2e8f0"/>
+<text x="82" y="137.0" text-anchor="end" font-family="sans-serif" font-size="11">41374.6</text>
+<line x1="90" y1="55.0" x2="890" y2="55.0" stroke="#e2e8f0"/>
+<text x="82" y="59.0" text-anchor="end" font-family="sans-serif" font-size="11">51718.3</text>
+<text x="90.0" y="469" text-anchor="middle" font-family="sans-serif" font-size="12">12</text>
+<text x="356.7" y="469" text-anchor="middle" font-family="sans-serif" font-size="12">36</text>
+<text x="623.3" y="469" text-anchor="middle" font-family="sans-serif" font-size="12">72</text>
+<text x="890.0" y="469" text-anchor="middle" font-family="sans-serif" font-size="12">144</text>
+<polyline points="90.0,397.1 356.7,354.7 623.3,250.8 890.0,83.9" fill="none" stroke="#64748b" stroke-width="3"/>
+<circle cx="90.0" cy="397.1" r="4" fill="#64748b"/>
+<circle cx="356.7" cy="354.7" r="4" fill="#64748b"/>
+<circle cx="623.3" cy="250.8" r="4" fill="#64748b"/>
+<circle cx="890.0" cy="83.9" r="4" fill="#64748b"/>
+<line x1="90" y1="495" x2="114" y2="495" stroke="#64748b" stroke-width="3"/>
+<text x="120" y="499" font-family="sans-serif" font-size="11">round_robin</text>
+<polyline points="90.0,397.1 356.7,354.7 623.3,250.8 890.0,83.9" fill="none" stroke="#f59e0b" stroke-width="3"/>
+<circle cx="90.0" cy="397.1" r="4" fill="#f59e0b"/>
+<circle cx="356.7" cy="354.7" r="4" fill="#f59e0b"/>
+<circle cx="623.3" cy="250.8" r="4" fill="#f59e0b"/>
+<circle cx="890.0" cy="83.9" r="4" fill="#f59e0b"/>
+<line x1="245" y1="495" x2="269" y2="495" stroke="#f59e0b" stroke-width="3"/>
+<text x="275" y="499" font-family="sans-serif" font-size="11">least_requests</text>
+<polyline points="90.0,406.2 356.7,363.1 623.3,267.1 890.0,90.8" fill="none" stroke="#8b5cf6" stroke-width="3"/>
+<circle cx="90.0" cy="406.2" r="4" fill="#8b5cf6"/>
+<circle cx="356.7" cy="363.1" r="4" fill="#8b5cf6"/>
+<circle cx="623.3" cy="267.1" r="4" fill="#8b5cf6"/>
+<circle cx="890.0" cy="90.8" r="4" fill="#8b5cf6"/>
+<line x1="400" y1="495" x2="424" y2="495" stroke="#8b5cf6" stroke-width="3"/>
+<text x="430" y="499" font-family="sans-serif" font-size="11">token_max</text>
+<polyline points="90.0,407.1 356.7,361.3 623.3,268.9 890.0,88.1" fill="none" stroke="#059669" stroke-width="3"/>
+<circle cx="90.0" cy="407.1" r="4" fill="#059669"/>
+<circle cx="356.7" cy="361.3" r="4" fill="#059669"/>
+<circle cx="623.3" cy="268.9" r="4" fill="#059669"/>
+<circle cx="890.0" cy="88.1" r="4" fill="#059669"/>
+<line x1="555" y1="495" x2="579" y2="495" stroke="#059669" stroke-width="3"/>
+<text x="585" y="499" font-family="sans-serif" font-size="11">token_ewma</text>
+<polyline points="90.0,409.0 356.7,365.6 623.3,270.9 890.0,92.1" fill="none" stroke="#2563eb" stroke-width="3"/>
+<circle cx="90.0" cy="409.0" r="4" fill="#2563eb"/>
+<circle cx="356.7" cy="365.6" r="4" fill="#2563eb"/>
+<circle cx="623.3" cy="270.9" r="4" fill="#2563eb"/>
+<circle cx="890.0" cy="92.1" r="4" fill="#2563eb"/>
+<line x1="710" y1="495" x2="734" y2="495" stroke="#2563eb" stroke-width="3"/>
+<text x="740" y="499" font-family="sans-serif" font-size="11">oracle</text>
+<text x="490.0" y="472" text-anchor="middle" font-family="sans-serif" font-size="12">simultaneous requests</text>
+<text x="18" y="250.0" transform="rotate(-90 18 250.0)" text-anchor="middle" font-family="sans-serif" font-size="12">milliseconds</text>
+</svg>

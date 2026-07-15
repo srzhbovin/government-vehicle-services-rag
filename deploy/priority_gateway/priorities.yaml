@@ -1,0 +1,41 @@
+version: 1
+
+upstream:
+  url: "${LITELLM_URL:-http://litellm:4000}"
+  api_key: "${LITELLM_MASTER_KEY:-sk-litellm-local}"
+  timeout_seconds: 180
+
+authentication:
+  required: true
+
+default_group: standard
+
+scheduler:
+  strategy: priority_aging
+  max_concurrency: 4
+  max_queue_size: 200
+  queue_timeout_seconds: 120
+  aging_interval_seconds: 0.5
+  starvation_timeout_seconds: 15
+
+groups:
+  critical:
+    priority: 0
+  standard:
+    priority: 10
+  batch:
+    priority: 20
+
+rules:
+  - group: critical
+    match:
+      bearer_tokens:
+        - "${PRIORITY_CRITICAL_API_KEY}"
+  - group: batch
+    match:
+      bearer_tokens:
+        - "${PRIORITY_BATCH_API_KEY}"
+  - group: standard
+    match:
+      bearer_tokens:
+        - "${PRIORITY_STANDARD_API_KEY}"

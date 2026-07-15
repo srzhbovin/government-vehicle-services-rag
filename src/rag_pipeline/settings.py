@@ -103,7 +103,11 @@ class Settings:
         chunks_path = Path(
             os.getenv(
                 "RAG_CHUNKS_PATH",
-                project_root / "data" / "current" / "prepared" / "dmv_chunks_token_120_0.jsonl",
+                project_root
+                / "data"
+                / "current"
+                / "prepared"
+                / "dmv_chunks_token_120_0.jsonl",
             )
         )
         index_dir = Path(
@@ -197,13 +201,19 @@ class Settings:
             prompt_strategy=os.getenv(
                 "RAG_PROMPT_STRATEGY",
                 "structured_output",
-            ).strip().lower(),
+            )
+            .strip()
+            .lower(),
             local_llm_base_url=os.getenv(
                 "LOCAL_LLM_BASE_URL",
                 (
                     "http://127.0.0.1:18000/v1"
                     if llm_provider == "lmdeploy"
-                    else "http://127.0.0.1:1234/v1"
+                    else (
+                        "http://127.0.0.1:4000/v1"
+                        if llm_provider == "litellm"
+                        else "http://127.0.0.1:1234/v1"
+                    )
                 ),
             ).rstrip("/"),
             local_llm_model=os.getenv(
@@ -211,7 +221,9 @@ class Settings:
                 (
                     "qwen2.5-3b-instruct"
                     if llm_provider == "lmdeploy"
-                    else "google/gemma-3-4b"
+                    else (
+                        "dmv-rag" if llm_provider == "litellm" else "google/gemma-3-4b"
+                    )
                 ),
             ),
             local_llm_api_key=os.getenv("LOCAL_LLM_API_KEY", "local"),
@@ -278,13 +290,13 @@ class Settings:
 
     @property
     def generator_configured(self) -> bool:
-        if self.llm_provider in {"lmstudio", "lmdeploy"}:
+        if self.llm_provider in {"lmstudio", "lmdeploy", "litellm"}:
             return bool(self.local_llm_base_url)
         return bool(self.yandex_api_key and self.yandex_folder_id)
 
     @property
     def generation_model_name(self) -> str:
-        if self.llm_provider in {"lmstudio", "lmdeploy"}:
+        if self.llm_provider in {"lmstudio", "lmdeploy", "litellm"}:
             return self.local_llm_model
         return self.yandex_model
 
@@ -307,9 +319,9 @@ class Settings:
             raise SettingsError("Missing Yandex Cloud settings: " + ", ".join(missing))
 
     def validate(self) -> None:
-        if self.llm_provider not in {"lmstudio", "lmdeploy", "yandex"}:
+        if self.llm_provider not in {"lmstudio", "lmdeploy", "litellm", "yandex"}:
             raise SettingsError(
-                "RAG_LLM_PROVIDER must be 'lmstudio', 'lmdeploy' or 'yandex'"
+                "RAG_LLM_PROVIDER must be 'lmstudio', 'lmdeploy', 'litellm' or 'yandex'"
             )
         if self.prompt_strategy not in {
             "plain",
@@ -331,9 +343,13 @@ class Settings:
         if self.context_intro_chunks < 0:
             raise SettingsError("RAG_CONTEXT_INTRO_CHUNKS cannot be negative")
         if self.max_context_chunks < self.top_k:
-            raise SettingsError("RAG_MAX_CONTEXT_CHUNKS must be greater than or equal to RAG_TOP_K")
+            raise SettingsError(
+                "RAG_MAX_CONTEXT_CHUNKS must be greater than or equal to RAG_TOP_K"
+            )
         if not 1 <= self.adaptive_top_k <= self.reranker_candidate_k:
-            raise SettingsError("Expected RAG_ADAPTIVE_TOP_K <= RAG_RERANKER_CANDIDATE_K")
+            raise SettingsError(
+                "Expected RAG_ADAPTIVE_TOP_K <= RAG_RERANKER_CANDIDATE_K"
+            )
         if self.adaptive_context_window < 0:
             raise SettingsError("RAG_ADAPTIVE_CONTEXT_WINDOW cannot be negative")
         if self.adaptive_context_intro_chunks < 0:
@@ -343,7 +359,9 @@ class Settings:
                 "RAG_ADAPTIVE_MAX_CONTEXT_CHUNKS must be greater than or equal to RAG_ADAPTIVE_TOP_K"
             )
         if not 0 <= self.refusal_min_lexical_overlap <= 1:
-            raise SettingsError("RAG_REFUSAL_MIN_LEXICAL_OVERLAP must be between 0 and 1")
+            raise SettingsError(
+                "RAG_REFUSAL_MIN_LEXICAL_OVERLAP must be between 0 and 1"
+            )
         if not 0 <= self.bm25_weight <= 1:
             raise SettingsError("RAG_BM25_WEIGHT must be between 0 and 1")
         if not 0 <= self.generation_temperature <= 1:

@@ -61,6 +61,20 @@ class GeneratorTests(unittest.TestCase):
         self.assertTrue(settings.generator_configured)
         self.assertEqual(settings.generation_model_name, "qwen2.5-3b-instruct")
 
+    def test_litellm_gateway_uses_openai_compatible_generator(self):
+        settings = replace(
+            Settings.from_env(),
+            llm_provider="litellm",
+            local_llm_base_url="http://127.0.0.1:4000/v1",
+            local_llm_model="dmv-rag",
+        )
+
+        settings.validate()
+
+        self.assertIsInstance(build_generator(settings), LocalOpenAICompatibleGenerator)
+        self.assertTrue(settings.generator_configured)
+        self.assertEqual(settings.generation_model_name, "dmv-rag")
+
     def test_context_prompt_contains_question_source_and_marker(self):
         prompt = build_context_prompt("How do I renew?", [source()])
 

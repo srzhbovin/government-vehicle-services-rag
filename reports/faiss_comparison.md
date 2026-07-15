@@ -9,7 +9,7 @@ Validation-вопросы: `data\current\prepared\dmv_questions_validation.jsonl
 Векторы: dense TF-IDF, L2-normalized, dimension=2048. Поиск идёт через
 inner product, то есть эквивалент cosine similarity для нормализованных векторов.
 
-## Главное
+## Вывод
 
 - Лучшее качество: `ivf32_nprobe16`, Recall@10=0.6299.
 - Самый быстрый поиск: `flat_ip`, 0.0335 ms/query.

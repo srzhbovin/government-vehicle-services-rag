@@ -285,16 +285,24 @@ def infer_batch_size(record: dict[str, Any], path: Path) -> int | None:
     direct = safe_int(first_value(record, ("batch_size", "max_concurrency")))
     if direct is not None:
         return direct
-    text = f"{record.get('tag') or ''} {path.as_posix()}"
-    return infer_number(text, ("batch", "batch-size", "batch_size", "bs", "b"))
+    labels = ("batch", "batch-size", "batch_size", "bs", "b")
+    for text in (f"{record.get('tag') or ''} {path.name}", path.as_posix()):
+        inferred = infer_number(text, labels)
+        if inferred is not None:
+            return inferred
+    return None
 
 
 def infer_repeat(record: dict[str, Any], path: Path) -> int | None:
     direct = safe_int(first_value(record, ("repeat", "repetition", "run_index")))
     if direct is not None:
         return direct
-    text = f"{record.get('tag') or ''} {path.as_posix()}"
-    return infer_number(text, ("repeat", "repetition", "rep", "run", "r"))
+    labels = ("repeat", "repetition", "rep", "run", "r")
+    for text in (f"{record.get('tag') or ''} {path.name}", path.as_posix()):
+        inferred = infer_number(text, labels)
+        if inferred is not None:
+            return inferred
+    return None
 
 
 def percentile_from_seconds(values: Any, percentile: float) -> float | None:
@@ -933,9 +941,7 @@ def build_report(
     model_revision = metadata.get("MODEL_REVISION", "не указан")
     workload = metadata.get("WORKLOAD", "generated-shared-prefix")
     input_length = metadata.get("INPUT_LENGTH", metadata.get("INPUT_TOKENS", "512"))
-    output_length = metadata.get(
-        "OUTPUT_LENGTH", metadata.get("OUTPUT_TOKENS", "128")
-    )
+    output_length = metadata.get("OUTPUT_LENGTH", metadata.get("OUTPUT_TOKENS", "128"))
     num_prompts = metadata.get("NUM_PROMPTS", "не указано")
     warmup_requests = metadata.get(
         "WARMUP_REQUESTS", metadata.get("WARMUP_PROMPTS", "не указано")

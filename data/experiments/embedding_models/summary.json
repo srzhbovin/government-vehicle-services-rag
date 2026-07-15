@@ -1,0 +1,22 @@
+[
+  {
+    "model": "sentence-transformers/all-MiniLM-L6-v2",
+    "dimension": 384,
+    "build_ms": 68330.772,
+    "search_ms_per_query": 7.948839,
+    "recall@1": 0.308304,
+    "recall@5": 0.522968,
+    "recall@10": 0.613074,
+    "mrr@10": 0.400967
+  },
+  {
+    "model": "sentence-transformers/all-mpnet-base-v2",
+    "dimension": 768,
+    "build_ms": 545944.299,
+    "search_ms_per_query": 54.726331,
+    "recall@1": 0.293286,
+    "recall@5": 0.500883,
+    "recall@10": 0.592756,
+    "mrr@10": 0.381601
+  }
+]

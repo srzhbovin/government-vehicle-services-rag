@@ -535,7 +535,7 @@ class LocalOpenAICompatibleGenerator:
 
 
 def build_generator(settings: Settings):
-    if settings.llm_provider in {"lmstudio", "lmdeploy"}:
+    if settings.llm_provider in {"lmstudio", "lmdeploy", "litellm"}:
         return LocalOpenAICompatibleGenerator(settings)
     return YandexGenerator(settings)
 

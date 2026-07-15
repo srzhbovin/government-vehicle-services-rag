@@ -1,0 +1,21 @@
+services:
+  token-routing-benchmark:
+    build:
+      context: ../..
+      dockerfile: deploy/priority_gateway/token_benchmark.Dockerfile
+    command:
+      - --output-dir
+      - /app/output
+      - --batch-sizes
+      - "12"
+      - "36"
+      - "72"
+      - "144"
+      - --repeats
+      - "5"
+      - --replicas
+      - "3"
+      - --seed
+      - "20260714"
+    volumes:
+      - ../../data/experiments/priority_gateway/token_aware:/app/output

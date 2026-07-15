@@ -2,17 +2,17 @@
 
 Сравнение способов разбиения DMV-документов для RAG retrieval.
 
-Документы: `C:\Users\Sergey\Desktop\government_vehicle_services_rag\RAG\data\current\prepared\dmv_documents.jsonl`
+Документы: `data/current/prepared/dmv_documents.jsonl`
 
-Вопросы для проверки: `C:\Users\Sergey\Desktop\government_vehicle_services_rag\RAG\data\current\prepared\dmv_questions_validation.jsonl`
+Вопросы для проверки: `data/current/prepared/dmv_questions_validation.jsonl`
 
 Метрика: document-level Recall@k. Вопрос считается найденным, если среди top-k
 чанков есть хотя бы один чанк из правильного `gold_document_ids`.
 
-## Главное
+## Вывод
 
 - Лучший вариант по Recall@10: `token`, size=120, overlap=0, Recall@10=0.6475.
-- Компания-style baseline `recursive 500/200`: Recall@10=0.6290, Recall@5=0.5636, чанков=2435.
+- Исходный baseline `recursive 500/200`: Recall@10=0.6290, Recall@5=0.5636, чанков=2435.
 - TokenTextSplitter в этом датасете оказался сильным конкурентом, потому что BM25 retrieval тоже работает по словам/термам.
 - Semantic-lite реализован без внешних embedding-моделей, через sentence grouping и TF-IDF similarity;
 

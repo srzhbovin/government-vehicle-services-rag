@@ -1,0 +1,23 @@
+{
+  "created_at_utc": "2026-07-15T14:09:37.772016+00:00",
+  "chunks_path": "data\\current\\prepared\\dmv_chunks_token_120_0.jsonl",
+  "chunks_sha256": "5578841956f60530fe14c752905e18dcb8575759c194fde731c69d8adf0ff188",
+  "chunks": 1152,
+  "embedding_backend": "sentence-transformers",
+  "embedding_model": "sentence-transformers/all-mpnet-base-v2",
+  "dimension": 768,
+  "faiss_index": "data\\experiments\\embedding_models\\all-mpnet-base-v2\\index\\faiss_flat.index",
+  "faiss_index_size_bytes": 3538989,
+  "selected_method": "hybrid_rrf",
+  "selection_rule": "validation recall@5, then mrr@10, recall@10, latency",
+  "bm25": {
+    "k1": 1.5,
+    "b": 0.75
+  },
+  "hybrid": {
+    "rrf_k": 60,
+    "bm25_weight": 0.5
+  },
+  "reranker_model": null,
+  "reranker_candidate_k": null
+}
